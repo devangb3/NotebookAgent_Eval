@@ -1,27 +1,147 @@
 from __future__ import annotations
 
+import json
 import os
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 import re
+import traceback
+from uuid import uuid4
 
 import nbformat
 from dotenv import load_dotenv
-from nbformat.v4 import new_code_cell, new_markdown_cell, new_notebook
+from nbformat.v4 import new_notebook
 from openai import OpenAI
 
-from agent import AgentConfig, NotebookReActAgent
+from agent import (
+    AgentConfig,
+    AgentRunResult,
+    AgentTraceStep,
+    AgentUsageSummary,
+    NotebookReActAgent,
+)
 from environment import NotebookEnvironment
 from tools import NotebookToolExecutor
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_NOTEBOOK_PATH = Path("notebooks/home_credit_agent_session.ipynb")
+DEFAULT_RUNS_DIR = Path("jobs")
 
-TRAINING_PROMPT = """Using the already loaded Home Credit data, build a deterministic ML workflow in the notebook.
+@dataclass(frozen=True)
+class AppConfig:
+    openrouter_api_key: str
+    openrouter_model: str
+    home_credit_data_dir: Path
+    run_id: str
+    run_dir: Path
+    notebook_path: Path
+    transcript_path: Path
+    trajectory_path: Path
+    config_path: Path
+    result_path: Path
+
+
+def main() -> None:
+    load_dotenv()
+    config = load_config()
+    started_at = utc_now()
+    client = OpenAI(api_key=config.openrouter_api_key, base_url=OPENROUTER_BASE_URL)
+    write_json(
+        config.config_path,
+        build_config_payload(config),
+    )
+
+    bootstrap_notebook(notebook_path=config.notebook_path)
+
+    stage_results: list[tuple[str, AgentRunResult]] = []
+    exception_info: dict[str, str] | None = None
+    training_prompt = build_training_prompt(config.home_credit_data_dir)
+    headroom_prompt = build_headroom_prompt(config.home_credit_data_dir)
+
+    try:
+        with NotebookEnvironment(config.notebook_path) as environment:
+            tools = NotebookToolExecutor(environment)
+            agent = NotebookReActAgent(client=client, tools=tools, config=AgentConfig(model=config.openrouter_model))
+
+            training_result = agent.run(training_prompt, stage_name="training")
+            stage_results.append(("training", training_result))
+            print("Training stage result:")
+            print(training_result.final_response)
+            print()
+
+            headroom_result = agent.run(headroom_prompt, stage_name="headroom")
+            stage_results.append(("headroom", headroom_result))
+            print("Headroom QA result:")
+            print(headroom_result.final_response)
+            print()
+    except Exception as exc:
+        exception_info = {
+            "type": type(exc).__name__,
+            "message": str(exc),
+            "traceback": traceback.format_exc(),
+        }
+        raise
+    finally:
+        write_transcript(config.transcript_path, config=config, stage_results=stage_results)
+        write_json(
+            config.trajectory_path,
+            build_trajectory_payload(config=config, stage_results=stage_results),
+        )
+        write_json(
+            config.result_path,
+            build_result_payload(
+                config=config,
+                stage_results=stage_results,
+                started_at=started_at,
+                finished_at=utc_now(),
+                exception_info=exception_info,
+            ),
+        )
+
+    print(f"Run artifacts saved to: {config.run_dir}")
+    print(f"Final notebook saved to: {config.notebook_path}")
+
+
+def load_config() -> AppConfig:
+    api_key = _require_env("OPENROUTER_API_KEY")
+    model = _require_env("OPENROUTER_MODEL")
+    data_dir = _require_home_credit_data_dir()
+
+    run_id = str(uuid4())
+    run_dir = build_run_directory(model)
+    notebook_path = run_dir / "notebook.ipynb"
+
+    return AppConfig(
+        openrouter_api_key=api_key,
+        openrouter_model=model,
+        home_credit_data_dir=data_dir,
+        run_id=run_id,
+        run_dir=run_dir,
+        notebook_path=notebook_path,
+        transcript_path=run_dir / "transcript.txt",
+        trajectory_path=run_dir / "agent" / "trajectory.json",
+        config_path=run_dir / "config.json",
+        result_path=run_dir / "result.json",
+    )
+
+
+def bootstrap_notebook(notebook_path: Path) -> None:
+    notebook_path.parent.mkdir(parents=True, exist_ok=True)
+    notebook = new_notebook(cells=[])
+
+    with notebook_path.open("w", encoding="utf-8") as handle:
+        nbformat.write(notebook, handle)
+
+
+def build_training_prompt(data_dir: Path) -> str:
+    data_dir = data_dir.expanduser().resolve()
+    return f"""Starting from a blank notebook, build a deterministic ML workflow for the Home Credit dataset.
+
+Dataset location:
+- Home Credit CSV directory: `{data_dir}`
 
 Requirements:
-- Work only from data already loaded in memory.
+- Add the notebook code needed to import libraries and load the data from the dataset directory above.
 - Use `app_train` and `TARGET`.
 - Perform preprocessing suitable for a quick proof of concept.
 - Perform deterministic feature selection.
@@ -32,132 +152,32 @@ Requirements:
 - Print the chosen feature count and validation metrics.
 """
 
-HEADROOM_PROMPT = """Answer a follow-up question in the same persistent kernel without retraining the model.
+
+def build_headroom_prompt(data_dir: Path) -> str:
+    data_dir = data_dir.expanduser().resolve()
+    return f"""Answer a follow-up question in the same persistent kernel without retraining the model.
+
+Dataset location:
+- Home Credit CSV directory: `{data_dir}`
 
 Requirements:
-- Reuse the existing `trained_model`, `selected_features`, and loaded datasets already in memory.
+- Reuse the existing `trained_model` and `selected_features` from the persistent kernel.
 - Add new code cells only as needed.
 - Score the first 10 rows of `app_test` using the existing model.
+- If `app_test` is unavailable in the kernel, load only what you need from the dataset directory above.
 - Report whether the existing model artifact was reused from memory.
 - If the model exposes coefficients or feature importances, print the top 5 features.
 - Finish with a concise plain-text answer after executing notebook code.
 """
 
 
-@dataclass(frozen=True)
-class AppConfig:
-    openrouter_api_key: str
-    openrouter_model: str
-    notebook_path: Path
-
-
-def main() -> None:
-    load_dotenv()
-    config = load_config()
-
-    bootstrap_notebook(notebook_path=config.notebook_path)
-
-    client = OpenAI(api_key=config.openrouter_api_key, base_url=OPENROUTER_BASE_URL)
-
-    with NotebookEnvironment(config.notebook_path) as environment:
-        tools = NotebookToolExecutor(environment)
-        agent = NotebookReActAgent(client=client, tools=tools, config=AgentConfig(model=config.openrouter_model))
-
-        training_result = agent.run(TRAINING_PROMPT)
-        print("Training stage result:")
-        print(training_result.final_response)
-        print()
-
-        headroom_result = agent.run(HEADROOM_PROMPT)
-        print("Headroom QA result:")
-        print(headroom_result.final_response)
-        print()
-        print(f"Notebook saved to: {config.notebook_path}")
-
-
-def load_config() -> AppConfig:
-    api_key = _require_env("OPENROUTER_API_KEY")
-    model = _require_env("OPENROUTER_MODEL")
-
-    notebook_path_value = os.getenv("NOTEBOOK_PATH", str(DEFAULT_NOTEBOOK_PATH))
-    notebook_path = build_run_notebook_path(Path(notebook_path_value), model)
-
-    return AppConfig(
-        openrouter_api_key=api_key,
-        openrouter_model=model,
-        notebook_path=notebook_path,
-    )
-
-
-def bootstrap_notebook(notebook_path: Path) -> None:
-    notebook_path.parent.mkdir(parents=True, exist_ok=True)
-
-    notebook = new_notebook(
-        cells=[
-            new_markdown_cell(
-                "# Home Credit Agent Session\n\n"
-                "This notebook is a deterministic bootstrap for the DSBench notebook "
-                "agent."
-            ),
-            new_code_cell(
-                "import os\n"
-                "from pathlib import Path\n"
-                "\n"
-                "import numpy as np\n"
-                "import pandas as pd\n"
-                "\n"
-                "SEED = 42\n"
-                "TARGET = 'TARGET'\n"
-                "np.random.seed(SEED)\n"
-            ),
-            new_code_cell(
-                "DATA_DIR = Path(os.environ['HOME_CREDIT_DATA_DIR']).expanduser().resolve()\n"
-                "TABLE_FILES = {\n"
-                "    'app_train': 'application_train.csv',\n"
-                "    'app_test': 'application_test.csv',\n"
-                "    'bureau': 'bureau.csv',\n"
-                "    'bureau_bal': 'bureau_balance.csv',\n"
-                "    'prev_app': 'previous_application.csv',\n"
-                "    'pos_cash': 'POS_CASH_balance.csv',\n"
-                "    'installments': 'installments_payments.csv',\n"
-                "    'credit_card': 'credit_card_balance.csv',\n"
-                "}\n"
-                "\n"
-                "def load_home_credit_tables(data_dir: Path) -> dict[str, pd.DataFrame]:\n"
-                "    if not data_dir.exists():\n"
-                "        raise FileNotFoundError(f'Data directory does not exist: {data_dir}')\n"
-                "    tables: dict[str, pd.DataFrame] = {}\n"
-                "    for table_name, file_name in TABLE_FILES.items():\n"
-                "        table_path = data_dir / file_name\n"
-                "        if not table_path.exists():\n"
-                "            raise FileNotFoundError(f'Required dataset file missing: {table_path}')\n"
-                "        tables[table_name] = pd.read_csv(table_path)\n"
-                "    return tables\n"
-                "\n"
-                "data_tables = load_home_credit_tables(DATA_DIR)\n"
-                "app_train = data_tables['app_train'].copy()\n"
-                "app_test = data_tables['app_test'].copy()\n"
-                "print(f'Loaded Home Credit tables from {DATA_DIR}')\n"
-                "print(f'app_train shape: {app_train.shape}')\n"
-                "print(f'app_test shape: {app_test.shape}')\n"
-                "print(f'TARGET positive rate: {app_train[TARGET].mean():.4f}')\n"
-            ),
-        ]
-    )
-
-    with notebook_path.open("w", encoding="utf-8") as handle:
-        nbformat.write(notebook, handle)
-
-
-def build_run_notebook_path(
-    configured_path: Path,
+def build_run_directory(
     model_name: str,
     current_time: datetime | None = None,
 ) -> Path:
-    output_dir = configured_path if configured_path.suffix != ".ipynb" else configured_path.parent
     timestamp = (current_time or datetime.now()).strftime("%Y%m%d_%H%M%S")
     safe_model_name = sanitize_model_name(model_name)
-    return output_dir / f"agent_{safe_model_name}_{timestamp}.ipynb"
+    return DEFAULT_RUNS_DIR / f"agent_{safe_model_name}_{timestamp}"
 
 
 def sanitize_model_name(model_name: str) -> str:
@@ -167,11 +187,243 @@ def sanitize_model_name(model_name: str) -> str:
     return "model"
 
 
+def build_config_payload(config: AppConfig) -> dict[str, object]:
+    return {
+        "trial_name": config.run_dir.name,
+        "trials_dir": str(config.run_dir.parent),
+        "job_id": config.run_id,
+        "agent": {
+            "provider": "openrouter",
+            "model_name": config.openrouter_model,
+            "max_steps": AgentConfig.max_steps,
+            "temperature": AgentConfig.temperature,
+        },
+        "dataset": {
+            "home_credit_data_dir": str(config.home_credit_data_dir),
+        },
+        "artifacts": {
+            "run_dir": str(config.run_dir),
+            "notebook_path": str(config.notebook_path),
+            "transcript_path": str(config.transcript_path),
+            "trajectory_path": str(config.trajectory_path),
+            "result_path": str(config.result_path),
+        },
+        "prompts": {
+            "training": build_training_prompt(config.home_credit_data_dir),
+            "headroom": build_headroom_prompt(config.home_credit_data_dir),
+        },
+    }
+
+
+def build_result_payload(
+    *,
+    config: AppConfig,
+    stage_results: list[tuple[str, AgentRunResult]],
+    started_at: str,
+    finished_at: str,
+    exception_info: dict[str, str] | None,
+) -> dict[str, object]:
+    usage = summarize_usage(stage_results)
+    all_trace_steps = flatten_trace_steps(stage_results)
+    api_request_times = [round(step.metrics.api_duration_ms, 3) for step in all_trace_steps]
+
+    return {
+        "id": config.run_id,
+        "trial_name": config.run_dir.name,
+        "trial_uri": config.run_dir.resolve().as_uri(),
+        "config": build_config_payload(config),
+        "agent_result": {
+            "n_input_tokens": usage.prompt_tokens,
+            "n_output_tokens": usage.completion_tokens,
+            "n_total_tokens": usage.total_tokens,
+            "cost_usd": round(usage.cost_usd, 6),
+            "metadata": {
+                "n_stages": len(stage_results),
+                "n_steps": len(all_trace_steps),
+                "api_request_times_msec": api_request_times,
+            },
+        },
+        "stages": [
+            {
+                "name": stage_name,
+                "steps_used": result.steps_used,
+                "final_response": result.final_response,
+                "usage": asdict(result.usage),
+            }
+            for stage_name, result in stage_results
+        ],
+        "exception_info": exception_info,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "artifacts": {
+            "notebook": str(config.notebook_path.relative_to(config.run_dir)),
+            "transcript": str(config.transcript_path.relative_to(config.run_dir)),
+            "trajectory": str(config.trajectory_path.relative_to(config.run_dir)),
+        },
+    }
+
+
+def build_trajectory_payload(
+    *,
+    config: AppConfig,
+    stage_results: list[tuple[str, AgentRunResult]],
+) -> dict[str, object]:
+    return {
+        "schema_version": "dsbench-run-v1",
+        "session_id": config.run_id,
+        "agent": {
+            "provider": "openrouter",
+            "model_name": config.openrouter_model,
+            "extra": {
+                "temperature": AgentConfig.temperature,
+                "max_steps": AgentConfig.max_steps,
+            },
+        },
+        "steps": [
+            serialize_trace_step(step)
+            for step in flatten_trace_steps(stage_results)
+        ],
+    }
+
+
+def flatten_trace_steps(stage_results: list[tuple[str, AgentRunResult]]) -> list[AgentTraceStep]:
+    return [step for _, result in stage_results for step in result.trace_steps]
+
+
+def summarize_usage(stage_results: list[tuple[str, AgentRunResult]]) -> AgentUsageSummary:
+    prompt_tokens = sum(result.usage.prompt_tokens for _, result in stage_results)
+    completion_tokens = sum(result.usage.completion_tokens for _, result in stage_results)
+    total_tokens = sum(result.usage.total_tokens for _, result in stage_results)
+    cost_usd = sum(result.usage.cost_usd for _, result in stage_results)
+    return AgentUsageSummary(
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        cost_usd=cost_usd,
+    )
+
+
+def serialize_trace_step(step: AgentTraceStep) -> dict[str, object]:
+    return {
+        "step_id": step.step_id,
+        "stage": step.stage,
+        "timestamp": step.timestamp,
+        "source": "assistant",
+        "request_messages": list(step.request_messages),
+        "message": step.assistant_content,
+        "tool_calls": [
+            {
+                "tool_call_id": tool_call.tool_call_id,
+                "function_name": tool_call.name,
+                "arguments_json": tool_call.arguments_json,
+            }
+            for tool_call in step.tool_calls
+        ],
+        "observation": {
+            "results": [
+                {"content": tool_result}
+                for tool_result in step.tool_results
+            ]
+        },
+        "metrics": asdict(step.metrics),
+    }
+
+
+def write_transcript(
+    transcript_path: Path,
+    *,
+    config: AppConfig,
+    stage_results: list[tuple[str, AgentRunResult]],
+) -> None:
+    lines = [
+        f"trial_name: {config.run_dir.name}",
+        f"model_name: {config.openrouter_model}",
+        f"run_dir: {config.run_dir}",
+        "",
+    ]
+
+    for stage_name, result in stage_results:
+        lines.append(f"=== Stage: {stage_name} ===")
+        lines.append(f"final_response: {result.final_response}")
+        lines.append(f"steps_used: {result.steps_used}")
+        lines.append(
+            "usage: "
+            f"prompt_tokens={result.usage.prompt_tokens}, "
+            f"completion_tokens={result.usage.completion_tokens}, "
+            f"total_tokens={result.usage.total_tokens}, "
+            f"cost_usd={result.usage.cost_usd:.6f}"
+        )
+        lines.append("")
+
+        for step in result.trace_steps:
+            lines.append(
+                f"--- Step {step.step_id} | {step.timestamp} | "
+                f"api_duration_ms={step.metrics.api_duration_ms:.3f} ---"
+            )
+            lines.append("REQUEST MESSAGES:")
+            lines.append(json.dumps(list(step.request_messages), indent=2))
+            lines.append("ASSISTANT CONTENT:")
+            lines.append(step.assistant_content or "<empty>")
+
+            if step.tool_calls:
+                lines.append("TOOL CALLS:")
+                for tool_call in step.tool_calls:
+                    lines.append(
+                        json.dumps(
+                            {
+                                "tool_call_id": tool_call.tool_call_id,
+                                "name": tool_call.name,
+                                "arguments_json": tool_call.arguments_json,
+                            },
+                            indent=2,
+                        )
+                    )
+
+            if step.tool_results:
+                lines.append("TOOL RESULTS:")
+                for index, tool_result in enumerate(step.tool_results, start=1):
+                    lines.append(f"[tool_result_{index}]")
+                    lines.append(tool_result)
+
+            lines.append("")
+
+    transcript_path.parent.mkdir(parents=True, exist_ok=True)
+    transcript_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_json(path: Path, payload: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def _require_env(key: str) -> str:
     value = os.getenv(key)
     if value is None or not value.strip():
         raise EnvironmentError(f"Missing required environment variable: {key}")
     return value.strip()
+
+
+def _require_home_credit_data_dir() -> Path:
+    data_dir = Path(_require_env("HOME_CREDIT_DATA_DIR")).expanduser().resolve()
+    if not data_dir.exists():
+        raise EnvironmentError(f"HOME_CREDIT_DATA_DIR does not exist: {data_dir}")
+
+    required_files = (
+        "application_train.csv",
+        "application_test.csv",
+    )
+    missing_files = [file_name for file_name in required_files if not (data_dir / file_name).exists()]
+    if missing_files:
+        missing = ", ".join(missing_files)
+        raise EnvironmentError(
+            f"HOME_CREDIT_DATA_DIR is missing required files: {missing} in {data_dir}"
+        )
+
+    return data_dir
 
 
 if __name__ == "__main__":

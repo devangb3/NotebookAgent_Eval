@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
-from typing import Protocol
+from datetime import datetime, timezone
+from time import perf_counter
+from typing import Protocol, cast
 
 from tools import NotebookToolExecutor, format_notebook_state
 
@@ -33,9 +36,40 @@ class AgentToolCall:
 
 
 @dataclass(frozen=True)
+class AgentStepMetrics:
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    cost_usd: float = 0.0
+    api_duration_ms: float = 0.0
+
+
+@dataclass(frozen=True)
+class AgentTraceStep:
+    step_id: int
+    stage: str
+    timestamp: str
+    request_messages: tuple[dict[str, object], ...]
+    assistant_content: str
+    tool_calls: tuple[AgentToolCall, ...]
+    tool_results: tuple[str, ...]
+    metrics: AgentStepMetrics
+
+
+@dataclass(frozen=True)
+class AgentUsageSummary:
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    cost_usd: float = 0.0
+
+
+@dataclass(frozen=True)
 class AgentRunResult:
     final_response: str
     steps_used: int
+    usage: AgentUsageSummary
+    trace_steps: tuple[AgentTraceStep, ...]
 
 
 class AgentError(RuntimeError):
@@ -83,7 +117,7 @@ class NotebookReActAgent:
         self._tools = tools
         self._config = config
 
-    def run(self, prompt: str) -> AgentRunResult:
+    def run(self, prompt: str, *, stage_name: str = "run") -> AgentRunResult:
         initial_state = format_notebook_state(self._tools.environment.get_state())
         messages: list[dict[str, object]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -95,8 +129,15 @@ class NotebookReActAgent:
                 ),
             },
         ]
+        trace_steps: list[AgentTraceStep] = []
+        usage_summary = AgentUsageSummary()
 
         for step in range(1, self._config.max_steps + 1):
+            request_messages = tuple(
+                copy.deepcopy(cast(dict[str, object], message)) for message in messages
+            )
+            started_at = _utc_now()
+            started_perf = perf_counter()
             response = self._client.chat.completions.create(
                 model=self._config.model,
                 messages=messages,
@@ -104,9 +145,11 @@ class NotebookReActAgent:
                 tool_choice="auto",
                 temperature=self._config.temperature,
             )
+            api_duration_ms = (perf_counter() - started_perf) * 1000.0
             message = _extract_response_message(response)
             content = _extract_message_content(message)
             tool_calls = _extract_tool_calls(message)
+            step_metrics = _extract_step_metrics(response, api_duration_ms=api_duration_ms)
 
             assistant_payload: dict[str, object] = {"role": "assistant"}
             if content:
@@ -124,17 +167,37 @@ class NotebookReActAgent:
                     for call in tool_calls
                 ]
             messages.append(assistant_payload)
+            tool_results: list[str] = []
+            usage_summary = _merge_usage(usage_summary, step_metrics)
 
             if not tool_calls:
+                trace_steps.append(
+                    AgentTraceStep(
+                        step_id=step,
+                        stage=stage_name,
+                        timestamp=started_at,
+                        request_messages=request_messages,
+                        assistant_content=content,
+                        tool_calls=tool_calls,
+                        tool_results=tuple(),
+                        metrics=step_metrics,
+                    )
+                )
                 if not content:
                     raise AgentProtocolError("Assistant returned neither tool calls nor final text.")
-                return AgentRunResult(final_response=content, steps_used=step)
+                return AgentRunResult(
+                    final_response=content,
+                    steps_used=step,
+                    usage=usage_summary,
+                    trace_steps=tuple(trace_steps),
+                )
 
             for tool_call in tool_calls:
                 tool_result = self._tools.dispatch(
                     tool_name=tool_call.name,
                     raw_arguments=tool_call.arguments_json,
                 )
+                tool_results.append(tool_result)
                 messages.append(
                     {
                         "role": "tool",
@@ -142,6 +205,18 @@ class NotebookReActAgent:
                         "content": tool_result,
                     }
                 )
+            trace_steps.append(
+                AgentTraceStep(
+                    step_id=step,
+                    stage=stage_name,
+                    timestamp=started_at,
+                    request_messages=request_messages,
+                    assistant_content=content,
+                    tool_calls=tool_calls,
+                    tool_results=tuple(tool_results),
+                    metrics=step_metrics,
+                )
+            )
 
         raise AgentMaxStepsExceeded(
             f"Agent did not finish within {self._config.max_steps} steps."
@@ -202,3 +277,59 @@ def _extract_tool_calls(message: object) -> tuple[AgentToolCall, ...]:
         )
 
     return tuple(calls)
+
+
+def _extract_step_metrics(response: object, *, api_duration_ms: float) -> AgentStepMetrics:
+    usage = getattr(response, "usage", None)
+    prompt_tokens = _read_int_field(usage, "prompt_tokens")
+    completion_tokens = _read_int_field(usage, "completion_tokens")
+    total_tokens = _read_int_field(usage, "total_tokens")
+    if total_tokens == 0:
+        total_tokens = prompt_tokens + completion_tokens
+
+    cost_usd = _read_float_field(usage, "cost")
+    if cost_usd == 0.0:
+        cost_usd = _read_float_field(usage, "cost_usd")
+
+    return AgentStepMetrics(
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        cost_usd=cost_usd,
+        api_duration_ms=api_duration_ms,
+    )
+
+
+def _read_int_field(value: object, key: str) -> int:
+    raw_value = _read_field(value, key)
+    if isinstance(raw_value, int):
+        return raw_value
+    return 0
+
+
+def _read_float_field(value: object, key: str) -> float:
+    raw_value = _read_field(value, key)
+    if isinstance(raw_value, (int, float)):
+        return float(raw_value)
+    return 0.0
+
+
+def _read_field(value: object, key: str) -> object:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return value.get(key)
+    return getattr(value, key, None)
+
+
+def _merge_usage(summary: AgentUsageSummary, metrics: AgentStepMetrics) -> AgentUsageSummary:
+    return AgentUsageSummary(
+        prompt_tokens=summary.prompt_tokens + metrics.prompt_tokens,
+        completion_tokens=summary.completion_tokens + metrics.completion_tokens,
+        total_tokens=summary.total_tokens + metrics.total_tokens,
+        cost_usd=summary.cost_usd + metrics.cost_usd,
+    )
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")

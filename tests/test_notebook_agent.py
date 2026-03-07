@@ -9,7 +9,12 @@ from nbformat.v4 import new_code_cell, new_notebook
 
 from agent import AgentConfig, NotebookReActAgent
 from environment import NotebookEnvironment
-from main import bootstrap_notebook, build_run_notebook_path
+from main import (
+    bootstrap_notebook,
+    build_headroom_prompt,
+    build_run_directory,
+    build_training_prompt,
+)
 from tools import NotebookToolExecutor
 
 
@@ -123,7 +128,8 @@ def test_agent_runs_tool_loop_with_mocked_client(tmp_path: Path) -> None:
                         ],
                     )
                 )
-            ]
+            ],
+            usage=FakeUsage(prompt_tokens=10, completion_tokens=4, total_tokens=14, cost=0.01),
         ),
         FakeResponse(
             choices=[
@@ -141,7 +147,8 @@ def test_agent_runs_tool_loop_with_mocked_client(tmp_path: Path) -> None:
                         ],
                     )
                 )
-            ]
+            ],
+            usage=FakeUsage(prompt_tokens=12, completion_tokens=5, total_tokens=17, cost=0.02),
         ),
         FakeResponse(
             choices=[
@@ -151,7 +158,8 @@ def test_agent_runs_tool_loop_with_mocked_client(tmp_path: Path) -> None:
                         tool_calls=[],
                     )
                 )
-            ]
+            ],
+            usage=FakeUsage(prompt_tokens=8, completion_tokens=3, total_tokens=11, cost=0.03),
         ),
     ]
 
@@ -163,46 +171,55 @@ def test_agent_runs_tool_loop_with_mocked_client(tmp_path: Path) -> None:
         )
         result = agent.run("Multiply the seeded notebook value by four.")
         assert "persistent notebook kernel" in result.final_response
+        assert result.usage.prompt_tokens == 30
+        assert result.usage.completion_tokens == 12
+        assert result.usage.total_tokens == 42
+        assert result.usage.cost_usd == 0.06
+        assert len(result.trace_steps) == 3
+        assert result.trace_steps[0].tool_calls[0].name == "add_cell"
+        assert "Cell 1 output" in result.trace_steps[1].tool_results[0]
         snapshot = environment.get_state()
         assert snapshot.cells[1].outputs_summary.strip() == "12"
 
 
-def test_bootstrap_notebook_uses_home_credit_contract(tmp_path: Path) -> None:
+def test_bootstrap_notebook_starts_empty(tmp_path: Path) -> None:
     notebook_path = tmp_path / "bootstrapped.ipynb"
     bootstrap_notebook(notebook_path=notebook_path)
 
     with notebook_path.open("r", encoding="utf-8") as handle:
         notebook = nbformat.read(handle, as_version=4)
 
-    joined_sources = "\n".join(
-        str(cell.source)
-        for cell in notebook.cells
-        if getattr(cell, "cell_type", "") == "code"
-    )
-    assert "application_train.csv" in joined_sources
-    assert "application_test.csv" in joined_sources
-    assert "TARGET = 'TARGET'" in joined_sources
+    assert notebook.cells == []
 
 
-def test_build_run_notebook_path_uses_model_name_and_timestamp(tmp_path: Path) -> None:
-    run_path = build_run_notebook_path(
-        tmp_path / "session.ipynb",
+def test_prompt_builders_reference_dataset_path_without_in_memory_constraint(tmp_path: Path) -> None:
+    data_dir = tmp_path / "home-credit-default-risk"
+    training_prompt = build_training_prompt(data_dir)
+    headroom_prompt = build_headroom_prompt(data_dir)
+
+    assert str(data_dir.resolve()) in training_prompt
+    assert str(data_dir.resolve()) in headroom_prompt
+    assert "already loaded" not in training_prompt
+    assert "loaded datasets already in memory" not in headroom_prompt
+    assert "blank notebook" in training_prompt
+
+
+def test_build_run_directory_uses_model_name_and_timestamp() -> None:
+    run_path = build_run_directory(
         "openai/gpt-4.1-mini",
         current_time=datetime(2026, 3, 7, 12, 34, 56),
     )
 
-    assert run_path == tmp_path / "agent_openai_gpt_4_1_mini_20260307_123456.ipynb"
+    assert run_path == Path("jobs/agent_openai_gpt_4_1_mini_20260307_123456")
 
 
-def test_build_run_notebook_path_accepts_directory_targets(tmp_path: Path) -> None:
-    output_dir = tmp_path / "notebooks"
-    run_path = build_run_notebook_path(
-        output_dir,
+def test_build_run_directory_falls_back_to_model_when_sanitized_name_is_empty() -> None:
+    run_path = build_run_directory(
         "///",
         current_time=datetime(2026, 3, 7, 12, 34, 56),
     )
 
-    assert run_path == output_dir / "agent_model_20260307_123456.ipynb"
+    assert run_path == Path("jobs/agent_model_20260307_123456")
 
 
 def _write_notebook(path: Path, cells: list[object]) -> None:
@@ -237,6 +254,15 @@ class FakeChoice:
 @dataclass(frozen=True)
 class FakeResponse:
     choices: list[FakeChoice]
+    usage: object | None = None
+
+
+@dataclass(frozen=True)
+class FakeUsage:
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    cost: float
 
 
 class FakeCompletions:
