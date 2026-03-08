@@ -8,7 +8,7 @@ from uuid import uuid4
 from run_artifacts import build_run_directory
 from task_loader import TaskFile, load_task_files
 
-DEFAULT_DATA_ROOT = Path("data")
+DEFAULT_DATA_ROOT = Path(".")
 NOTEBOOK_TIMEOUT_SECONDS = 600
 
 
