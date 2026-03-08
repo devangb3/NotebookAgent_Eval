@@ -19,6 +19,8 @@ class AppConfig:
     data_root: Path
     task_files: tuple[TaskFile, ...]
     notebook_timeout_seconds: int
+    max_steps: int
+    max_workers: int
     run_id: str
     run_dir: Path
     notebook_path: Path
@@ -30,7 +32,12 @@ class AppConfig:
     task_artifacts_dir: Path
 
 
-def load_config(*, task_paths: list[str]) -> AppConfig:
+def load_config(
+    *,
+    task_paths: list[str],
+    max_steps: int = 20,
+    max_workers: int = 4,
+) -> AppConfig:
     api_key = _require_env("OPENROUTER_API_KEY")
     model = _require_env("OPENROUTER_MODEL")
     data_root = DEFAULT_DATA_ROOT
@@ -46,6 +53,8 @@ def load_config(*, task_paths: list[str]) -> AppConfig:
         data_root=data_root,
         task_files=task_files,
         notebook_timeout_seconds=NOTEBOOK_TIMEOUT_SECONDS,
+        max_steps=max_steps,
+        max_workers=max_workers,
         run_id=run_id,
         run_dir=run_dir,
         notebook_path=notebook_path,

@@ -53,6 +53,18 @@ source .venv/bin/activate
 python main.py tasks/a.json tasks/b.json tasks/c.json
 ```
 
+**Options:**
+- `--max-workers N`: Number of tasks to run in parallel (default: 4)
+- `--max-steps N`: Maximum agent steps per task (default: 20)
+
+```bash
+# Custom parallelism and steps
+python main.py tasks/ --max-workers 8 --max-steps 30
+
+# Sequential (single worker)
+python main.py tasks/ --max-workers 1
+```
+
 Each run creates a Harbor-style artifact folder under `jobs/` using the pattern `agent_{model_name}_{timestamp}`. The top-level artifact structure is preserved:
 
 - `notebook.ipynb`: final notebook state from the last executed task

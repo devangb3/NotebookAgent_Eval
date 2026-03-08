@@ -6,12 +6,13 @@ from datetime import datetime
 from pathlib import Path
 
 import nbformat
+import benchmark_runner
 from nbclient.exceptions import DeadKernelError
 from nbformat.v4 import new_code_cell, new_notebook
 
-from agent import AgentConfig, AgentRunResult, AgentUsageSummary, NotebookReActAgent
+from agent import AgentConfig, AgentMaxStepsExceeded, AgentRunResult, AgentUsageSummary, NotebookReActAgent
 from app_config import AppConfig
-from benchmark_runner import TaskExecutionRecord
+from benchmark_runner import TaskExecutionRecord, run_benchmark
 from environment import NotebookEnvironment, NotebookExecutionFailure
 from prompt_builder import build_task_prompt
 from run_artifacts import (
@@ -351,6 +352,8 @@ def test_config_and_result_payloads_include_task_file_metadata(tmp_path: Path) -
         data_root=data_root,
         task_files=(task_file,),
         notebook_timeout_seconds=1234,
+        max_steps=20,
+        max_workers=4,
         run_id="run-123",
         run_dir=tmp_path / "jobs" / "agent_test",
         notebook_path=tmp_path / "jobs" / "agent_test" / "notebook.ipynb",
@@ -390,10 +393,118 @@ def test_config_and_result_payloads_include_task_file_metadata(tmp_path: Path) -
     assert config_payload["tasks"]["task_files"] == [str(task_file_path)]
     assert config_payload["artifacts"]["log_path"].endswith("runtime.log")
     assert result_payload["tasks"]["n_tasks"] == 1
+    assert result_payload["tasks"]["n_completed_tasks"] == 1
+    assert result_payload["tasks"]["n_failed_tasks"] == 0
     assert result_payload["tasks"]["results"][0]["task_id"] == task.task_id
     assert result_payload["tasks"]["results"][0]["task_file"] == str(task_file_path)
     assert result_payload["tasks"]["results"][0]["ground_truth"] == task.ground_truth
+    assert result_payload["tasks"]["results"][0]["status"] == "completed"
+    assert result_payload["tasks"]["results"][0]["failure_type"] is None
     assert result_payload["artifacts"]["runtime_log"] == "runtime.log"
+
+
+def test_run_benchmark_continues_after_max_steps_failure(tmp_path: Path, monkeypatch: object) -> None:
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    (data_root / "dataset.csv").write_text("value\n1\n", encoding="utf-8")
+
+    task_one = BenchmarkTask(
+        task_id="T-001",
+        data_source_type="csv",
+        data_source_path="dataset.csv",
+        problem_statement="Context",
+        question="Question one?",
+        ground_truth="Answer one",
+    )
+    task_two = BenchmarkTask(
+        task_id="T-002",
+        data_source_type="csv",
+        data_source_path="dataset.csv",
+        problem_statement="Context",
+        question="Question two?",
+        ground_truth="Answer two",
+    )
+    task_one_path = tmp_path / "task1.json"
+    task_two_path = tmp_path / "task2.json"
+    task_one_path.write_text(json.dumps(_task_payload(task_id="T-001", data_source_path="dataset.csv")), encoding="utf-8")
+    task_two_path.write_text(json.dumps(_task_payload(task_id="T-002", data_source_path="dataset.csv")), encoding="utf-8")
+
+    config = AppConfig(
+        openrouter_api_key="test-key",
+        openrouter_model="google/gemini-test",
+        data_root=data_root,
+        task_files=(
+            TaskFile(path=task_one_path, task=task_one),
+            TaskFile(path=task_two_path, task=task_two),
+        ),
+        notebook_timeout_seconds=1234,
+        max_steps=20,
+        max_workers=2,
+        run_id="run-123",
+        run_dir=tmp_path / "jobs" / "agent_test",
+        notebook_path=tmp_path / "jobs" / "agent_test" / "notebook.ipynb",
+        transcript_path=tmp_path / "jobs" / "agent_test" / "transcript.txt",
+        trajectory_path=tmp_path / "jobs" / "agent_test" / "agent" / "trajectory.json",
+        config_path=tmp_path / "jobs" / "agent_test" / "config.json",
+        result_path=tmp_path / "jobs" / "agent_test" / "result.json",
+        log_path=tmp_path / "jobs" / "agent_test" / "runtime.log",
+        task_artifacts_dir=tmp_path / "jobs" / "agent_test" / "tasks",
+    )
+
+    class _FakeOpenAI:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            del args, kwargs
+
+    def _fake_run_task(
+        *,
+        client: object,
+        config: AppConfig,
+        task_file: TaskFile,
+        task_index: int,
+        total_tasks: int,
+    ) -> TaskExecutionRecord:
+        del client, total_tasks
+        stage_name = task_stage_name(task_file.task)
+        task_notebook_path = config.run_dir / f"notebook_{task_index}.ipynb"
+        bootstrap_notebook(task_notebook_path)
+        if task_index == 1:
+            raise AgentMaxStepsExceeded("Agent did not finish within 20 steps.")
+        persisted_path = persist_task_notebook(
+            source_notebook_path=task_notebook_path,
+            task_artifacts_dir=config.task_artifacts_dir,
+            stage_name=stage_name,
+        )
+        result = AgentRunResult(
+            final_response="task completed",
+            steps_used=1,
+            usage=AgentUsageSummary(),
+            trace_steps=tuple(),
+        )
+        return TaskExecutionRecord(
+            task=task_file.task,
+            task_file_path=task_file.path,
+            stage_name=stage_name,
+            result=result,
+            task_notebook_path=persisted_path,
+        )
+
+    monkeypatch.setattr(benchmark_runner, "OpenAI", _FakeOpenAI)
+    monkeypatch.setattr(benchmark_runner, "_run_task", _fake_run_task)
+
+    run_benchmark(config)
+
+    result_payload = json.loads(config.result_path.read_text(encoding="utf-8"))
+    assert result_payload["exception_info"] is None
+    assert result_payload["tasks"]["n_tasks"] == 2
+    assert result_payload["tasks"]["n_failed_tasks"] == 1
+    assert result_payload["tasks"]["n_completed_tasks"] == 1
+    by_task_id = {result["task_id"]: result for result in result_payload["tasks"]["results"]}
+    assert by_task_id["T-001"]["status"] == "failed"
+    assert by_task_id["T-001"]["failure_type"] == "AgentMaxStepsExceeded"
+    assert "20 steps" in by_task_id["T-001"]["failure_message"]
+    assert by_task_id["T-001"]["final_response"].startswith("FAILED:")
+    assert by_task_id["T-002"]["status"] == "completed"
+    assert by_task_id["T-002"]["failure_type"] is None
 
 
 def test_persist_task_notebook_copies_to_task_directory(tmp_path: Path) -> None:

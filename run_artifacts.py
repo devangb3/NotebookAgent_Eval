@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from app_config import AppConfig
 
 DEFAULT_RUNS_DIR = Path("jobs")
-TASK_MAX_STEPS = 20
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 
@@ -49,7 +48,7 @@ def build_config_payload(config: AppConfig) -> dict[str, object]:
         "agent": {
             "provider": "openrouter",
             "model_name": config.openrouter_model,
-            "task_max_steps": TASK_MAX_STEPS,
+            "task_max_steps": config.max_steps,
             "temperature": 0.0,
         },
         "tasks": {
@@ -101,6 +100,8 @@ def build_result_payload(
         },
         "tasks": {
             "n_tasks": len(task_results),
+            "n_completed_tasks": sum(1 for record in task_results if record.error_type is None),
+            "n_failed_tasks": sum(1 for record in task_results if record.error_type is not None),
             "data_source_types": count_data_source_types([record.task for record in task_results]),
             "results": [
                 {
@@ -111,6 +112,9 @@ def build_result_payload(
                     "steps_used": record.result.steps_used,
                     "usage": asdict(record.result.usage),
                     "task_notebook": str(record.task_notebook_path.relative_to(config.run_dir)),
+                    "status": "failed" if record.error_type is not None else "completed",
+                    "failure_type": record.error_type,
+                    "failure_message": record.error_message,
                 }
                 for record in task_results
             ],
@@ -148,7 +152,7 @@ def build_trajectory_payload(
             "model_name": config.openrouter_model,
             "extra": {
                 "temperature": 0.0,
-                "task_max_steps": TASK_MAX_STEPS,
+                "task_max_steps": config.max_steps,
             },
         },
         "steps": [serialize_trace_step(step) for step in flatten_trace_steps(stage_results)],
@@ -300,3 +304,5 @@ class TaskExecutionRecordLike:
     stage_name: str
     result: AgentRunResult
     task_notebook_path: Path
+    error_type: str | None
+    error_message: str | None

@@ -13,12 +13,28 @@ from task_loader import resolve_task_paths
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_MAX_STEPS = 20
+DEFAULT_MAX_WORKERS = 4
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run notebook benchmark tasks from task JSON files or directories.")
     parser.add_argument(
         "task_paths",
         nargs="+",
-        help=("Task paths: a directory (runs all .json files under it), or one or more task JSON files.")
+        help=("Task paths: a directory (runs all .json files under it), or one or more task JSON files."),
+    )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=DEFAULT_MAX_WORKERS,
+        help=f"Number of tasks to run in parallel (default: {DEFAULT_MAX_WORKERS}).",
+    )
+    parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=DEFAULT_MAX_STEPS,
+        help=f"Maximum agent steps per task (default: {DEFAULT_MAX_STEPS}).",
     )
     return parser.parse_args()
 
@@ -27,7 +43,11 @@ def main() -> None:
     load_dotenv()
     args = parse_args()
     resolved_paths = resolve_task_paths(args.task_paths)
-    config = load_config(task_paths=[str(p) for p in resolved_paths])
+    config = load_config(
+        task_paths=[str(p) for p in resolved_paths],
+        max_steps=args.max_steps,
+        max_workers=args.max_workers,
+    )
     configure_logging(config.log_path)
     logger.info(
         "Starting run %s | model=%s | tasks=%s",
