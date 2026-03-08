@@ -30,6 +30,7 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_RUNS_DIR = Path("jobs")
 PHASE1_MAX_STEPS = 50
 PHASE2_MAX_STEPS = 50
+NOTEBOOK_TIMEOUT_SECONDS = 600
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class AppConfig:
     openrouter_api_key: str
     openrouter_model: str
     home_credit_data_dir: Path
+    notebook_timeout_seconds: int
     run_id: str
     run_dir: Path
     notebook_path: Path
@@ -55,10 +57,11 @@ def main() -> None:
     configure_logging(config.log_path)
     started_at = utc_now()
     logger.info(
-        "Starting run %s | model=%s | data_dir=%s",
+        "Starting run %s | model=%s | data_dir=%s | notebook_timeout_seconds=%s",
         config.run_id,
         config.openrouter_model,
         config.home_credit_data_dir,
+        config.notebook_timeout_seconds,
     )
     client = OpenAI(api_key=config.openrouter_api_key, base_url=OPENROUTER_BASE_URL)
     write_json(
@@ -75,7 +78,10 @@ def main() -> None:
     phase1_prompt = build_phase1_prompt(config.home_credit_data_dir)
 
     try:
-        with NotebookEnvironment(config.notebook_path) as environment:
+        with NotebookEnvironment(
+            config.notebook_path,
+            timeout_seconds=config.notebook_timeout_seconds,
+        ) as environment:
             tools = NotebookToolExecutor(environment)
             phase1_agent = NotebookReActAgent(
                 client=client,
@@ -161,6 +167,7 @@ def load_config() -> AppConfig:
         openrouter_api_key=api_key,
         openrouter_model=model,
         home_credit_data_dir=data_dir,
+        notebook_timeout_seconds=NOTEBOOK_TIMEOUT_SECONDS,
         run_id=run_id,
         run_dir=run_dir,
         notebook_path=notebook_path,
@@ -182,7 +189,7 @@ def bootstrap_notebook(notebook_path: Path) -> None:
 
 def build_phase1_prompt(data_dir: Path) -> str:
     data_dir = data_dir.expanduser().resolve()
-    return f"""Starting from a blank notebook, act as an end-to-end data scientist for the Home Credit dataset.
+    return f"""Starting from a blank notebook, act as an end-to-end data scientist for a given dataset.
 
 Dataset location:
 - Home Credit CSV directory: `{data_dir}`
@@ -191,7 +198,6 @@ Requirements:
 - Add the notebook code needed to import libraries and load the data from the dataset directory above.
 - Define `TARGET = 'TARGET'`.
 - Use these canonical variable names when a table is loaded: `app_train`, `app_test`, `bureau`, `bureau_bal`, `prev_app`, `pos_cash`, `installments`, `credit_card`.
-- Be memory-conscious: start with `app_train` and `app_test`, then process large auxiliary tables incrementally.
 - For large auxiliary tables, load only the columns needed for each aggregation, downcast dtypes when reasonable, aggregate one table at a time, delete large intermediates, and call `gc.collect()` after heavy steps.
 - Do not keep every raw auxiliary table resident in full memory unless it is necessary; phase 2 may reload a missing table from disk when needed.
 - Perform a full workflow: data loading, EDA, preprocessing, feature engineering across auxiliary tables, feature selection, deterministic modeling, validation, and interpretation.
@@ -260,6 +266,7 @@ def build_config_payload(config: AppConfig) -> dict[str, object]:
             "model_name": config.openrouter_model,
             "phase1_max_steps": PHASE1_MAX_STEPS,
             "phase2_max_steps": PHASE2_MAX_STEPS,
+            "notebook_timeout_seconds": config.notebook_timeout_seconds,
             "temperature": AgentConfig.temperature,
         },
         "dataset": {

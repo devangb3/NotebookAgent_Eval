@@ -255,6 +255,7 @@ def test_config_and_result_payloads_include_phase2_task_metadata(tmp_path: Path)
         openrouter_api_key="test-key",
         openrouter_model="openai/test-model",
         home_credit_data_dir=tmp_path / "data",
+        notebook_timeout_seconds=1234,
         run_id="run-123",
         run_dir=tmp_path / "jobs" / "agent_test",
         notebook_path=tmp_path / "jobs" / "agent_test" / "notebook.ipynb",
@@ -295,6 +296,7 @@ def test_config_and_result_payloads_include_phase2_task_metadata(tmp_path: Path)
     assert config_payload["headroom"]["task_count"] == 20
     assert config_payload["headroom"]["task_types"] == {"HT": 10, "HQ": 10}
     assert config_payload["artifacts"]["log_path"].endswith("runtime.log")
+    assert config_payload["agent"]["notebook_timeout_seconds"] == 1234
     assert len(config_payload["prompts"]["phase2_tasks"]) == 20
     assert result_payload["phase1"]["name"] == "phase1"
     assert result_payload["phase2"]["n_tasks"] == 1
