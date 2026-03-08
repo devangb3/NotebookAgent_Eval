@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -9,17 +10,18 @@ from nbclient.exceptions import DeadKernelError
 from nbformat.v4 import new_code_cell, new_notebook
 
 from agent import AgentConfig, AgentRunResult, AgentUsageSummary, NotebookReActAgent
+from app_config import AppConfig
+from benchmark_runner import TaskExecutionRecord
 from environment import NotebookEnvironment, NotebookExecutionFailure
-from headroom_tasks import HEADROOM_TASKS, task_stage_name
-from main import (
-    AppConfig,
+from prompt_builder import build_task_prompt
+from run_artifacts import (
     bootstrap_notebook,
     build_config_payload,
-    build_phase1_prompt,
-    build_phase2_prompt,
     build_result_payload,
     build_run_directory,
+    persist_task_notebook,
 )
+from task_loader import BenchmarkTask, TaskFile, load_task_file, load_task_files, task_stage_name
 from tools import NotebookToolExecutor
 
 
@@ -37,11 +39,7 @@ def test_notebook_environment_persists_kernel_state(tmp_path: Path) -> None:
         assert "seeded" in first_result.output_text
 
         tools = NotebookToolExecutor(environment)
-        tools.add_cell(
-            source="print(x * 2)",
-            cell_type="code",
-            position=1,
-        )
+        tools.add_cell(source="print(x * 2)", cell_type="code", position=1)
         second_result = environment.execute_notebook()
         assert "42" in second_result.output_text
 
@@ -224,37 +222,135 @@ def test_bootstrap_notebook_starts_empty(tmp_path: Path) -> None:
     assert notebook.cells == []
 
 
-def test_headroom_task_registry_contains_expected_questions() -> None:
-    assert len(HEADROOM_TASKS) == 20
-    assert HEADROOM_TASKS[0].task_id == "HT-001"
-    assert HEADROOM_TASKS[9].task_id == "HT-010"
-    assert HEADROOM_TASKS[10].task_id == "HQ-001"
-    assert HEADROOM_TASKS[-1].task_id == "HQ-010"
-    assert task_stage_name(HEADROOM_TASKS[0]) == "phase2_ht_001"
+def test_load_task_file_accepts_valid_task(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    source_path = data_root / "dataset.csv"
+    source_path.write_text("value\n1\n", encoding="utf-8")
+    task_path = tmp_path / "task.json"
+    task_path.write_text(json.dumps(_task_payload(task_id="T-001", data_source_path="dataset.csv")), encoding="utf-8")
+
+    task_file = load_task_file(task_path, data_root=data_root)
+
+    assert task_file.task.task_id == "T-001"
+    assert task_file.task.resolved_data_source_path(data_root) == source_path.resolve()
 
 
-def test_prompt_builders_reference_dataset_path_and_phase_contract(tmp_path: Path) -> None:
-    data_dir = tmp_path / "home-credit-default-risk"
-    phase1_prompt = build_phase1_prompt(data_dir)
-    phase2_prompt = build_phase2_prompt(data_dir, HEADROOM_TASKS[0])
+def test_load_task_files_rejects_duplicate_task_ids(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    (data_root / "dataset.csv").write_text("value\n1\n", encoding="utf-8")
+    first = tmp_path / "task1.json"
+    second = tmp_path / "task2.json"
+    payload = _task_payload(task_id="T-001", data_source_path="dataset.csv")
+    first.write_text(json.dumps(payload), encoding="utf-8")
+    second.write_text(json.dumps(payload), encoding="utf-8")
 
-    assert str(data_dir.resolve()) in phase1_prompt
-    assert str(data_dir.resolve()) in phase2_prompt
-    assert "blank notebook" in phase1_prompt
-    assert "app_train" in phase1_prompt
-    assert "bureau" in phase1_prompt
-    assert "Be memory-conscious" in phase1_prompt
-    assert "gc.collect()" in phase1_prompt
-    assert "persistent notebook kernel" in phase2_prompt
-    assert "Task ID: `HT-001`" in phase2_prompt
-    assert "Do not rebuild the entire workflow" in phase2_prompt
+    try:
+        load_task_files([str(first), str(second)], data_root=data_root)
+    except ValueError as exc:
+        assert "Duplicate task_id" in str(exc)
+    else:
+        raise AssertionError("Expected duplicate task_id validation failure.")
 
 
-def test_config_and_result_payloads_include_phase2_task_metadata(tmp_path: Path) -> None:
+def test_load_task_file_rejects_invalid_data_source_type(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    (data_root / "dataset.csv").write_text("value\n1\n", encoding="utf-8")
+    task_path = tmp_path / "task.json"
+    payload = _task_payload(task_id="T-001", data_source_path="dataset.csv")
+    payload["data_source_type"] = "pdf"
+    task_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    try:
+        load_task_file(task_path, data_root=data_root)
+    except ValueError as exc:
+        assert "unsupported data_source_type" in str(exc)
+    else:
+        raise AssertionError("Expected data source type validation failure.")
+
+
+def test_load_task_file_rejects_paths_outside_data_root(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    outside_path = tmp_path / "outside.csv"
+    outside_path.write_text("value\n1\n", encoding="utf-8")
+    task_path = tmp_path / "task.json"
+    task_path.write_text(
+        json.dumps(_task_payload(task_id="T-001", data_source_path="../outside.csv")),
+        encoding="utf-8",
+    )
+
+    try:
+        load_task_file(task_path, data_root=data_root)
+    except ValueError as exc:
+        assert "outside the data root" in str(exc)
+    else:
+        raise AssertionError("Expected data-root validation failure.")
+
+
+def test_task_stage_name_uses_generic_task_prefix() -> None:
+    task = BenchmarkTask(
+        task_id="HQ-001",
+        data_source_type="csv",
+        data_source_path="dataset.csv",
+        problem_statement="Context",
+        question="Question",
+        ground_truth="Answer",
+    )
+
+    assert task_stage_name(task) == "task_hq_001"
+
+
+def test_build_task_prompt_references_source_path_and_contract(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    source_path = data_root / "dataset.csv"
+    source_path.write_text("value\n1\n", encoding="utf-8")
+    task = BenchmarkTask(
+        task_id="T-001",
+        data_source_type="csv",
+        data_source_path="dataset.csv",
+        problem_statement="Understand the dataset.",
+        question="What is the average value?",
+        ground_truth="1",
+        agent_instructions="Keep the answer short.",
+    )
+
+    prompt = build_task_prompt(task, data_root=data_root)
+
+    assert "Starting from a blank notebook" in prompt
+    assert "Data Source: csv" in prompt
+    assert str(source_path.resolve()) in prompt
+    assert "Problem Statement: Understand the dataset." in prompt
+    assert "Question: What is the average value?" in prompt
+    assert "Task-specific instructions" in prompt
+    assert "pandas" in prompt
+
+
+def test_config_and_result_payloads_include_task_file_metadata(tmp_path: Path) -> None:
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    (data_root / "dataset.csv").write_text("value\n1\n", encoding="utf-8")
+    task = BenchmarkTask(
+        task_id="T-001",
+        data_source_type="csv",
+        data_source_path="dataset.csv",
+        problem_statement="Context",
+        question="Question?",
+        ground_truth="Answer",
+        agent_instructions="Short answer.",
+    )
+    task_file_path = tmp_path / "task.json"
+    task_file_path.write_text(json.dumps(_task_payload(task_id="T-001", data_source_path="dataset.csv")), encoding="utf-8")
+    task_file = TaskFile(path=task_file_path, task=task)
     config = AppConfig(
         openrouter_api_key="test-key",
-        openrouter_model="openai/test-model",
-        home_credit_data_dir=tmp_path / "data",
+        openrouter_model="google/gemini-test",
+        data_root=data_root,
+        task_files=(task_file,),
+        notebook_timeout_seconds=1234,
         run_id="run-123",
         run_dir=tmp_path / "jobs" / "agent_test",
         notebook_path=tmp_path / "jobs" / "agent_test" / "notebook.ipynb",
@@ -263,50 +359,60 @@ def test_config_and_result_payloads_include_phase2_task_metadata(tmp_path: Path)
         config_path=tmp_path / "jobs" / "agent_test" / "config.json",
         result_path=tmp_path / "jobs" / "agent_test" / "result.json",
         log_path=tmp_path / "jobs" / "agent_test" / "runtime.log",
+        task_artifacts_dir=tmp_path / "jobs" / "agent_test" / "tasks",
     )
-    phase1_result = AgentRunResult(
-        final_response="phase 1 complete",
-        steps_used=4,
-        usage=AgentUsageSummary(prompt_tokens=10, completion_tokens=5, total_tokens=15, cost_usd=0.1),
-        trace_steps=tuple(),
-    )
-    phase2_result = AgentRunResult(
-        final_response="phase 2 answer",
+    stage_name = task_stage_name(task)
+    task_result = AgentRunResult(
+        final_response="task answer",
         steps_used=2,
         usage=AgentUsageSummary(prompt_tokens=4, completion_tokens=2, total_tokens=6, cost_usd=0.02),
         trace_steps=tuple(),
     )
-    stage_results = [
-        ("phase1", phase1_result),
-        (task_stage_name(HEADROOM_TASKS[0]), phase2_result),
-    ]
+    record = TaskExecutionRecord(
+        task=task,
+        task_file_path=task_file_path,
+        stage_name=stage_name,
+        result=task_result,
+        task_notebook_path=config.task_artifacts_dir / stage_name / "notebook.ipynb",
+    )
 
     config_payload = build_config_payload(config)
     result_payload = build_result_payload(
         config=config,
-        stage_results=stage_results,
-        phase1_result=phase1_result,
-        phase2_task_results=[(HEADROOM_TASKS[0], phase2_result)],
+        stage_results=[(stage_name, task_result)],
+        task_results=[record],
         started_at="2026-03-07T00:00:00Z",
         finished_at="2026-03-07T00:01:00Z",
         exception_info=None,
     )
 
-    assert config_payload["headroom"]["task_count"] == 20
-    assert config_payload["headroom"]["task_types"] == {"HT": 10, "HQ": 10}
+    assert config_payload["tasks"]["count"] == 1
+    assert config_payload["tasks"]["task_files"] == [str(task_file_path)]
     assert config_payload["artifacts"]["log_path"].endswith("runtime.log")
-    assert len(config_payload["prompts"]["phase2_tasks"]) == 20
-    assert result_payload["phase1"]["name"] == "phase1"
-    assert result_payload["phase2"]["n_tasks"] == 1
-    assert result_payload["phase2"]["results"][0]["task_id"] == "HT-001"
-    assert result_payload["phase2"]["results"][0]["stage_name"] == "phase2_ht_001"
-    assert result_payload["phase2"]["task_types"] == {"HT": 1, "HQ": 0}
+    assert result_payload["tasks"]["n_tasks"] == 1
+    assert result_payload["tasks"]["results"][0]["task_id"] == task.task_id
+    assert result_payload["tasks"]["results"][0]["task_file"] == str(task_file_path)
+    assert result_payload["tasks"]["results"][0]["ground_truth"] == task.ground_truth
     assert result_payload["artifacts"]["runtime_log"] == "runtime.log"
+
+
+def test_persist_task_notebook_copies_to_task_directory(tmp_path: Path) -> None:
+    source_notebook = tmp_path / "notebook.ipynb"
+    _write_notebook(source_notebook, [new_code_cell("print('hello')")])
+
+    persisted_path = persist_task_notebook(
+        source_notebook_path=source_notebook,
+        task_artifacts_dir=tmp_path / "tasks",
+        stage_name="task_t_001",
+    )
+
+    assert persisted_path == tmp_path / "tasks" / "task_t_001" / "notebook.ipynb"
+    assert persisted_path.exists()
 
 
 def test_build_run_directory_uses_model_name_and_timestamp() -> None:
     run_path = build_run_directory(
-        "openai/gpt-4.1-mini",
+        model="openai/gpt-4.1-mini",
         current_time=datetime(2026, 3, 7, 12, 34, 56),
     )
 
@@ -315,11 +421,23 @@ def test_build_run_directory_uses_model_name_and_timestamp() -> None:
 
 def test_build_run_directory_falls_back_to_model_when_sanitized_name_is_empty() -> None:
     run_path = build_run_directory(
-        "///",
+        model="///",
         current_time=datetime(2026, 3, 7, 12, 34, 56),
     )
 
     assert run_path == Path("jobs/agent_model_20260307_123456")
+
+
+def _task_payload(*, task_id: str, data_source_path: str) -> dict[str, str]:
+    return {
+        "task_id": task_id,
+        "data_source_type": "csv",
+        "data_source_path": data_source_path,
+        "problem_statement": "Context",
+        "question": "Question?",
+        "ground_truth": "Answer",
+        "agent_instructions": "Short answer.",
+    }
 
 
 def _write_notebook(path: Path, cells: list[object]) -> None:
