@@ -17,6 +17,7 @@ Rules:
 - For code changes, prefer concise code cells with deterministic behavior.
 - If notebook execution fails, inspect the traceback, then repair the relevant cell and execute again.
 - Do not reload the dataset unless the task explicitly requires it.
+- Load all task data exclusively from the path provided in the task prompt;
 - When the task is complete, respond with a short plain-text summary and do not call more tools.
 """
 

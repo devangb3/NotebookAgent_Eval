@@ -28,9 +28,14 @@ dev = [
 [tool.setuptools]
 py-modules = [
   "agent",
+  "app_config",
+  "benchmark_runner",
   "environment",
-  "headroom_tasks",
   "main",
+  "prompt_builder",
+  "run_artifacts",
+  "synthetic_benchmark",
+  "task_loader",
   "tools",
 ]
 

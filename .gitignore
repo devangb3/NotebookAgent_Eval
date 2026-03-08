@@ -1,7 +1,8 @@
-data/
+synthetic/
 __pycache__/
 .venv/
 .env
 *.egg-info/
 jobs/agent_*/
+raw_ip.json
 node_modules/
