@@ -1,0 +1,13 @@
+account_id,segment,signup_date
+A01,SMB,2024-01-04
+A02,MidMarket,2024-01-07
+A03,Enterprise,2024-01-10
+A04,SMB,2024-01-13
+A05,MidMarket,2024-01-16
+A06,Enterprise,2024-01-19
+A07,SMB,2024-01-22
+A08,MidMarket,2024-01-25
+A09,Enterprise,2024-01-28
+A10,SMB,2024-01-31
+A11,MidMarket,2024-02-03
+A12,Enterprise,2024-02-06

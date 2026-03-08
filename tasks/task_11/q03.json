@@ -1,0 +1,9 @@
+{
+  "task_id": "task_11_q03",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_11/data",
+  "problem_statement": "Smart Meter Energy Usage with Tariffs and Outages. A utility analyst wants to understand high-load behavior, tariff exposure, and the local impact of outages on demand.",
+  "question": "Among the outage dates, which date had the largest percentage drop in total aggregate kwh versus the previous date?",
+  "ground_truth": "2024-06-10",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

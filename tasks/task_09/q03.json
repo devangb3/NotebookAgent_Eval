@@ -1,0 +1,9 @@
+{
+  "task_id": "task_09_q03",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_09/data",
+  "problem_statement": "Marketing Campaigns, Sessions, Spend, and Orders. A growth team wants to analyze campaign efficiency, bounce behavior, and multi-channel paths before purchase.",
+  "question": "What is the median order_value for users whose first recorded session came from the social channel?",
+  "ground_truth": "107",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

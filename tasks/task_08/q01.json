@@ -1,0 +1,9 @@
+{
+  "task_id": "task_08_q01",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_08/data",
+  "problem_statement": "Students, Courses, Attendance, and Clubs. A school administrator wants to connect coursework, attendance, and extracurricular participation to performance patterns.",
+  "question": "If each student's weighted exam average uses course credits and is then multiplied by that student's overall attendance rate, which homeroom has the highest mean attendance-penalized score?",
+  "ground_truth": "HR2",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

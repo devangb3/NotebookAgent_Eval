@@ -1,0 +1,11 @@
+title_id,genre,release_year,runtime_min,is_series
+T01,Drama,2018,42,1
+T02,Comedy,2021,28,1
+T03,SciFi,2019,50,1
+T04,Documentary,2022,60,0
+T05,Drama,2017,45,1
+T06,Kids,2020,25,1
+T07,Documentary,2016,55,0
+T08,Comedy,2023,30,1
+T09,SciFi,2015,52,1
+T10,Drama,2024,48,1

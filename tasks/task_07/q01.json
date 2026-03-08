@@ -1,0 +1,9 @@
+{
+  "task_id": "task_07_q01",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_07/data",
+  "problem_statement": "Flights and Airport Weather. An airline operations team wants to analyze delay patterns, route performance, and weather-linked disruptions.",
+  "question": "Considering only non-cancelled flights, which origin-destination route has the highest average arrival delay?",
+  "ground_truth": "BBB-DDD",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

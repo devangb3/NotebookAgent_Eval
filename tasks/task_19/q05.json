@@ -1,0 +1,9 @@
+{
+  "task_id": "task_19_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_19/data",
+  "problem_statement": "Soccer Matches, Events, Players, and Attendance. A sports analyst wants to derive standings, halftime dynamics, goal concentration, and venue scoring patterns from event data.",
+  "question": "Which venue has the highest average total goals per match?",
+  "ground_truth": "Stadium3",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

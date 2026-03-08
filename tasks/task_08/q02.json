@@ -1,0 +1,9 @@
+{
+  "task_id": "task_08_q02",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_08/data",
+  "problem_statement": "Students, Courses, Attendance, and Clubs. A school administrator wants to connect coursework, attendance, and extracurricular participation to performance patterns.",
+  "question": "How many students have a STEM-course exam average of at least 88 and belong to at least two clubs?",
+  "ground_truth": "2",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

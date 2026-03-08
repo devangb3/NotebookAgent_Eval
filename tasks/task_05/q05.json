@@ -1,0 +1,9 @@
+{
+  "task_id": "task_05_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_05/data",
+  "problem_statement": "Streaming Views, Catalog, and Subscriptions. A streaming platform wants to analyze engagement, completion, binge behavior, and viewing patterns tied to subscriber outcomes.",
+  "question": "On which date was the share of all watch minutes coming from Documentary titles the highest?",
+  "ground_truth": "2024-03-15",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

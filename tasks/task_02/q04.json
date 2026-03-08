@@ -1,0 +1,9 @@
+{
+  "task_id": "task_02_q04",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_02/data",
+  "problem_statement": "Bike Share Trips with Daily Weather. A city bike-share operator wants to connect demand patterns to weather, timing, and station flow balance.",
+  "question": "Which trip_date has the highest average trip duration?",
+  "ground_truth": "2024-04-13",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

@@ -1,0 +1,9 @@
+{
+  "task_id": "task_08_q04",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_08/data",
+  "problem_statement": "Students, Courses, Attendance, and Clubs. A school administrator wants to connect coursework, attendance, and extracurricular participation to performance patterns.",
+  "question": "Which student_id has the largest value of average_homework_score minus average_exam_score across enrolled courses?",
+  "ground_truth": "S07",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

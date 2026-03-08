@@ -1,0 +1,9 @@
+{
+  "task_id": "task_12_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_12/data",
+  "problem_statement": "Employees, Projects, Timesheets, Training, and Reviews. An HR and finance analyst wants to connect utilization, project mix, training completion, and review outcomes.",
+  "question": "Which project_id has the highest average total hours per assigned employee over the full period?",
+  "ground_truth": "P06",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

@@ -1,0 +1,9 @@
+meter_id,household_type,solar
+MTR01,apartment,0
+MTR02,house,1
+MTR03,house,0
+MTR04,apartment,1
+MTR05,house,0
+MTR06,apartment,0
+MTR07,house,1
+MTR08,apartment,0

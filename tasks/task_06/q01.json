@@ -1,0 +1,9 @@
+{
+  "task_id": "task_06_q01",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_06/data",
+  "problem_statement": "SaaS Accounts, Plans, Invoices, and Tickets. A B2B SaaS finance and support team wants to analyze cash collection, upgrades, ticket load, and account efficiency.",
+  "question": "Using net_amount = amount - credit_amount, which invoice month has the highest total collected cash from invoices paid within 15 days of issue_date?",
+  "ground_truth": "2024-03-01",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

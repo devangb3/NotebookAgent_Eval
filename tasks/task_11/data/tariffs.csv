@@ -1,0 +1,5 @@
+period,start_hour,end_hour,rate_per_kwh
+offpeak,0,5,0.12
+shoulder,6,16,0.2
+peak,17,21,0.32
+offpeak,22,23,0.12

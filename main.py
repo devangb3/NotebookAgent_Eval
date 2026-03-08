@@ -38,7 +38,6 @@ def main() -> None:
     run_benchmark(config)
     logger.info("Run artifacts saved to %s", config.run_dir)
     print(f"Run artifacts saved to: {config.run_dir}")
-    print(f"Final notebook saved to: {config.notebook_path}")
 
 
 if __name__ == "__main__":

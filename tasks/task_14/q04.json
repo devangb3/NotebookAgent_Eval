@@ -1,0 +1,9 @@
+{
+  "task_id": "task_14_q04",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_14/data",
+  "problem_statement": "Insurance Policies, Claims, and Payments. An insurance analyst wants to study settlement timing, payout ratios, claim clustering, and paid loss by product and month.",
+  "question": "Which adjuster has the highest average settlement_days, where settlement_days = close_date - report_date?",
+  "ground_truth": "AJ4",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

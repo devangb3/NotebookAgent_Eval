@@ -1,0 +1,13 @@
+listing_id,host_id,neighborhood,nightly_rate,cleaning_fee,instant_book
+LS001,H03,Downtown,79,23,0
+LS002,H05,Waterfront,88,26,1
+LS003,H07,Uptown,97,29,0
+LS004,H01,Midtown,106,32,1
+LS005,H03,Downtown,115,20,0
+LS006,H05,Waterfront,124,23,1
+LS007,H07,Uptown,133,26,0
+LS008,H01,Midtown,142,29,1
+LS009,H03,Downtown,151,32,0
+LS010,H05,Waterfront,70,20,1
+LS011,H07,Uptown,79,23,0
+LS012,H01,Midtown,88,26,1

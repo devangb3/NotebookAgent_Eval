@@ -1,0 +1,9 @@
+{
+  "task_id": "task_11_q02",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_11/data",
+  "problem_statement": "Smart Meter Energy Usage with Tariffs and Outages. A utility analyst wants to understand high-load behavior, tariff exposure, and the local impact of outages on demand.",
+  "question": "What is the total billed amount on weekend days, using the tariff rate determined by each usage row's hour, rounded to 2 decimals?",
+  "ground_truth": "100.84",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

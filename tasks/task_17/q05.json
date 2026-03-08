@@ -1,0 +1,9 @@
+{
+  "task_id": "task_17_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_17/data",
+  "problem_statement": "Short-Term Rental Hosts, Listings, Bookings, and Reviews. A rental marketplace wants to analyze host occupancy, neighborhood revenue concentration, cancellations, and booking design choices.",
+  "question": "What is the difference between average rating for instant-book listings and average rating for non-instant-book listings, computed as instant_book minus non_instant, rounded to 3 decimals?",
+  "ground_truth": "-0.146",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

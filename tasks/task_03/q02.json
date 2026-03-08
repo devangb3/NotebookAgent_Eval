@@ -1,0 +1,9 @@
+{
+  "task_id": "task_03_q02",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_03/data",
+  "problem_statement": "Hospital Admissions, Labs, and Medications. A hospital quality team wants to analyze readmissions, abnormal labs, medication exposure, and inpatient resource use.",
+  "question": "Which diagnosis has the highest average length of stay?",
+  "ground_truth": "Sepsis",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

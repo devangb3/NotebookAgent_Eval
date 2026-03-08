@@ -1,0 +1,9 @@
+{
+  "task_id": "task_10_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_10/data",
+  "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
+  "question": "Among on-time shipments, which ship_date has the highest total weight_kg shipped?",
+  "ground_truth": "2024-09-22",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

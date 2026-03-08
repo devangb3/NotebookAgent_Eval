@@ -1,0 +1,9 @@
+{
+  "task_id": "task_16_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_16/data",
+  "problem_statement": "Telecom Customers, Monthly Usage, and Bills. A telecom operator wants to identify plan stress, high-overage customers, payment risk, and regional bill patterns.",
+  "question": "Which month has the highest total overage_charge?",
+  "ground_truth": "2024-03-01",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

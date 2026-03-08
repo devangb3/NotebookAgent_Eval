@@ -1,0 +1,9 @@
+{
+  "task_id": "task_14_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_14/data",
+  "problem_statement": "Insurance Policies, Claims, and Payments. An insurance analyst wants to study settlement timing, payout ratios, claim clustering, and paid loss by product and month.",
+  "question": "Using loss_date month, which month has the highest total paid_total?",
+  "ground_truth": "2024-06",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

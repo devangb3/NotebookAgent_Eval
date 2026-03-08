@@ -1,0 +1,13 @@
+field_id,crop,area_ha,soil
+F01,Wheat,6,Loam
+F02,Corn,7,Clay
+F03,Soy,8,Sandy
+F04,Wheat,9,Loam
+F05,Corn,5,Clay
+F06,Soy,6,Sandy
+F07,Wheat,7,Loam
+F08,Corn,8,Clay
+F09,Soy,9,Sandy
+F10,Wheat,5,Loam
+F11,Corn,6,Clay
+F12,Soy,7,Sandy

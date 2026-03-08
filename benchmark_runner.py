@@ -83,6 +83,8 @@ def run_benchmark(config: AppConfig) -> None:
                 exception_info=exception_info,
             ),
         )
+        if config.notebook_path.exists():
+            config.notebook_path.unlink()
 
 
 def _run_task(

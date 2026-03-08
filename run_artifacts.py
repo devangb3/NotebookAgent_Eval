@@ -128,7 +128,6 @@ def build_result_payload(
         "started_at": started_at,
         "finished_at": finished_at,
         "artifacts": {
-            "notebook": str(config.notebook_path.relative_to(config.run_dir)),
             "transcript": str(config.transcript_path.relative_to(config.run_dir)),
             "trajectory": str(config.trajectory_path.relative_to(config.run_dir)),
             "runtime_log": str(config.log_path.relative_to(config.run_dir)),

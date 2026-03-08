@@ -7,3 +7,5 @@ jobs/agent_*/
 raw_ip.json
 Task 1234 - Zomato Sessions
 node_modules/
+synthetic_benchmark.py
+test_synthetic_benchmark_assets.py

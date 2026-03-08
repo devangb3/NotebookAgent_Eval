@@ -1,0 +1,9 @@
+{
+  "task_id": "task_04_q04",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_04/data",
+  "problem_statement": "Manufacturing Batches, QC, and Maintenance. A factory operations analyst needs to connect maintenance timing to quality, runtime, and energy efficiency.",
+  "question": "What is the difference between mean runtime_hours for batches within 3 days after maintenance and mean runtime_hours for all other batches, rounded to 2 decimals?",
+  "ground_truth": "-0.83",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

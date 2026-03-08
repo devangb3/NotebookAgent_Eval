@@ -1,0 +1,9 @@
+{
+  "task_id": "task_04_q01",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_04/data",
+  "problem_statement": "Manufacturing Batches, QC, and Maintenance. A factory operations analyst needs to connect maintenance timing to quality, runtime, and energy efficiency.",
+  "question": "Considering only batches produced within 7 days after the most recent maintenance on the same machine, which machine_id has the highest defect rate defined as total defect_units divided by total units_produced?",
+  "ground_truth": "M01",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

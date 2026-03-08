@@ -1,0 +1,9 @@
+{
+  "task_id": "task_02_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_02/data",
+  "problem_statement": "Bike Share Trips with Daily Weather. A city bike-share operator wants to connect demand patterns to weather, timing, and station flow balance.",
+  "question": "On days with temp_c >= 20, which destination neighborhood receives the most trip arrivals?",
+  "ground_truth": "Uptown",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

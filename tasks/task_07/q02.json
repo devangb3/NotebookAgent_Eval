@@ -1,0 +1,9 @@
+{
+  "task_id": "task_07_q02",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_07/data",
+  "problem_statement": "Flights and Airport Weather. An airline operations team wants to analyze delay patterns, route performance, and weather-linked disruptions.",
+  "question": "On days where the origin airport had wind_kph >= 25, which carrier had the most cancelled flights?",
+  "ground_truth": "QF",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}
