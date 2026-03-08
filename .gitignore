@@ -5,3 +5,4 @@ __pycache__/
 *.egg-info/
 jobs/agent_*/
 raw_ip.json
+node_modules/
