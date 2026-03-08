@@ -1,9 +1,0 @@
-{
-  "task_id": "HT-001",
-  "data_source_type": "csv",
-  "data_source_path": "home-credit-default-risk/application_train.csv",
-  "problem_statement": "You are reviewing the main application training table for a credit-risk workflow.",
-  "question": "Investigate the DAYS_EMPLOYED feature, especially the concentration of values at 365243. What does it likely represent, how common is it, and what preprocessing should be used?",
-  "ground_truth": "365243 is a sentinel or anomaly value that usually means unknown or not currently employed. The correct handling is to create an indicator flag and replace the sentinel with missing before modeling.",
-  "agent_instructions": "Prefer pandas-based analysis, keep code deterministic, and avoid loading more raw data than needed."
-}

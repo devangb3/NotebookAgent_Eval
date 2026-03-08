@@ -31,6 +31,32 @@ class TaskFile:
     task: BenchmarkTask
 
 
+def resolve_task_paths(paths: list[str]) -> list[Path]:
+    """
+    Expand paths to task JSON files.
+    - Directory: all .json files under it (recursive)
+    - File: the file itself
+    """
+    result: list[Path] = []
+    for path_str in paths:
+        p = Path(path_str).expanduser().resolve()
+        if not p.exists():
+            raise FileNotFoundError(f"Path does not exist: {p}")
+        if p.is_dir():
+            result.extend(sorted(p.rglob("*.json")))
+        else:
+            result.append(p)
+    seen: set[Path] = set()
+    deduped: list[Path] = []
+    for path in sorted(result):
+        if path not in seen:
+            seen.add(path)
+            deduped.append(path)
+    if not deduped:
+        raise ValueError("No task JSON files found. Provide at least one task file or a directory containing .json files.")
+    return deduped
+
+
 def load_task_file(task_path: Path, *, data_root: Path) -> TaskFile:
     resolved_task_path = task_path.expanduser().resolve()
     if not resolved_task_path.exists():
@@ -45,11 +71,12 @@ def load_task_file(task_path: Path, *, data_root: Path) -> TaskFile:
     return TaskFile(path=resolved_task_path, task=task)
 
 
-def load_task_files(task_paths: list[str], *, data_root: Path) -> tuple[TaskFile, ...]:
+def load_task_files(task_paths: list[str] | list[Path], *, data_root: Path) -> tuple[TaskFile, ...]:
     if not task_paths:
-        raise ValueError("Provide at least one task JSON file path.")
+        raise ValueError("Provide at least one task path (file or directory).")
 
-    task_files = tuple(load_task_file(Path(task_path), data_root=data_root) for task_path in task_paths)
+    paths = [Path(p) if isinstance(p, str) else p for p in task_paths]
+    task_files = tuple(load_task_file(path, data_root=data_root) for path in paths)
     _validate_unique_task_ids(task_files)
     return task_files
 

@@ -8,16 +8,17 @@ from dotenv import load_dotenv
 from app_config import load_config
 from benchmark_runner import run_benchmark
 from run_artifacts import configure_logging
+from task_loader import resolve_task_paths
 
 logger = logging.getLogger(__name__)
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run notebook benchmark tasks from one or more task JSON files.")
+    parser = argparse.ArgumentParser(description="Run notebook benchmark tasks from task JSON files or directories.")
     parser.add_argument(
-        "task_files",
+        "task_paths",
         nargs="+",
-        help="One or more task JSON files. Pass each task as a separate argument.",
+        help=("Task paths: a directory (runs all .json files under it), or one or more task JSON files.")
     )
     return parser.parse_args()
 
@@ -25,7 +26,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     load_dotenv()
     args = parse_args()
-    config = load_config(task_paths=args.task_files)
+    resolved_paths = resolve_task_paths(args.task_paths)
+    config = load_config(task_paths=[str(p) for p in resolved_paths])
     configure_logging(config.log_path)
     logger.info(
         "Starting run %s | model=%s | tasks=%s",

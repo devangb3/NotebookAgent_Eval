@@ -33,18 +33,24 @@ A sample task file is included at `tasks/home_credit/ht_001.json`.
 
 ## Run
 
-Pass one or more task JSON files as positional arguments:
+Pass task paths as positional arguments. Each path can be a directory (runs all `.json` files under it) or a task JSON file.
 
+**Run all tasks in a directory:**
+```bash
+source .venv/bin/activate
+python main.py tasks/
+```
+
+**Run a single task file:**
 ```bash
 source .venv/bin/activate
 python main.py tasks/home_credit/ht_001.json
 ```
 
-Or run several tasks in one job:
-
+**Run specific files:**
 ```bash
 source .venv/bin/activate
-python main.py path/to/task_a.json path/to/task_b.json
+python main.py tasks/a.json tasks/b.json tasks/c.json
 ```
 
 Each run creates a Harbor-style artifact folder under `jobs/` using the pattern `agent_{model_name}_{timestamp}`. The top-level artifact structure is preserved:
