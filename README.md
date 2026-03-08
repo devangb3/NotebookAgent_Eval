@@ -14,7 +14,7 @@ cp .env.example .env
 
 ## Run
 
-Run `main.py` to execute the experiment end-to-end: start from a blank notebook, let the agent load the Home Credit data from `HOME_CREDIT_DATA_DIR`, train the model, and run the follow-up headroom question in the same kernel.
+Run `main.py` to execute the experiment end-to-end: start from a blank notebook, let the agent build a full Home Credit workflow in phase 1, then keep the same kernel alive for phase 2 and answer the extracted HT/HQ headroom questions one by one.
 
 Each run creates a Harbor-style artifact folder under `jobs/` using the pattern `agent_{model_name}_{timestamp}`. That folder contains:
 
@@ -23,6 +23,9 @@ Each run creates a Harbor-style artifact folder under `jobs/` using the pattern 
 - `config.json`: run configuration and prompts
 - `result.json`: run metadata, token usage, timings, and total cost
 - `agent/trajectory.json`: structured step-by-step trace
+- `runtime.log`: execution logs for phases, tasks, and notebook cell execution
+
+Phase 2 uses a normalized headroom task registry extracted from `home_credit_headroom_project_new.ipynb`; the source notebook is not executed at runtime.
 
 ```bash
 source .venv/bin/activate

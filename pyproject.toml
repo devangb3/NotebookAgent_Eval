@@ -29,6 +29,7 @@ dev = [
 py-modules = [
   "agent",
   "environment",
+  "headroom_tasks",
   "main",
   "tools",
 ]

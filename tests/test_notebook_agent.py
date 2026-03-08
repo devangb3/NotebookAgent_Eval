@@ -5,15 +5,20 @@ from datetime import datetime
 from pathlib import Path
 
 import nbformat
+from nbclient.exceptions import DeadKernelError
 from nbformat.v4 import new_code_cell, new_notebook
 
-from agent import AgentConfig, NotebookReActAgent
-from environment import NotebookEnvironment
+from agent import AgentConfig, AgentRunResult, AgentUsageSummary, NotebookReActAgent
+from environment import NotebookEnvironment, NotebookExecutionFailure
+from headroom_tasks import HEADROOM_TASKS, task_stage_name
 from main import (
+    AppConfig,
     bootstrap_notebook,
-    build_headroom_prompt,
+    build_config_payload,
+    build_phase1_prompt,
+    build_phase2_prompt,
+    build_result_payload,
     build_run_directory,
-    build_training_prompt,
 )
 from tools import NotebookToolExecutor
 
@@ -75,6 +80,33 @@ def test_execute_notebook_returns_traceback_text(tmp_path: Path) -> None:
         result = tools.execute_notebook()
         assert "ValueError" in result
         assert "boom" in result
+
+
+def test_execute_notebook_translates_dead_kernel_into_execution_failure(tmp_path: Path) -> None:
+    notebook_path = tmp_path / "dead-kernel.ipynb"
+    _write_notebook(
+        notebook_path,
+        [
+            new_code_cell("print('heavy step')"),
+        ],
+    )
+
+    with NotebookEnvironment(notebook_path) as environment:
+        environment._kernel_started = True
+
+        def _raise_dead_kernel(*args: object, **kwargs: object) -> object:
+            del args, kwargs
+            raise DeadKernelError("Kernel died")
+
+        environment._client.execute_cell = _raise_dead_kernel  # type: ignore[method-assign]
+
+        try:
+            environment.execute_notebook()
+        except NotebookExecutionFailure as exc:
+            assert "kernel died" in str(exc).lower()
+            assert "heavy step" in str(exc)
+        else:
+            raise AssertionError("Expected NotebookExecutionFailure when kernel dies.")
 
 
 def test_get_cell_and_get_all_cells_return_current_state(tmp_path: Path) -> None:
@@ -192,16 +224,84 @@ def test_bootstrap_notebook_starts_empty(tmp_path: Path) -> None:
     assert notebook.cells == []
 
 
-def test_prompt_builders_reference_dataset_path_without_in_memory_constraint(tmp_path: Path) -> None:
-    data_dir = tmp_path / "home-credit-default-risk"
-    training_prompt = build_training_prompt(data_dir)
-    headroom_prompt = build_headroom_prompt(data_dir)
+def test_headroom_task_registry_contains_expected_questions() -> None:
+    assert len(HEADROOM_TASKS) == 20
+    assert HEADROOM_TASKS[0].task_id == "HT-001"
+    assert HEADROOM_TASKS[9].task_id == "HT-010"
+    assert HEADROOM_TASKS[10].task_id == "HQ-001"
+    assert HEADROOM_TASKS[-1].task_id == "HQ-010"
+    assert task_stage_name(HEADROOM_TASKS[0]) == "phase2_ht_001"
 
-    assert str(data_dir.resolve()) in training_prompt
-    assert str(data_dir.resolve()) in headroom_prompt
-    assert "already loaded" not in training_prompt
-    assert "loaded datasets already in memory" not in headroom_prompt
-    assert "blank notebook" in training_prompt
+
+def test_prompt_builders_reference_dataset_path_and_phase_contract(tmp_path: Path) -> None:
+    data_dir = tmp_path / "home-credit-default-risk"
+    phase1_prompt = build_phase1_prompt(data_dir)
+    phase2_prompt = build_phase2_prompt(data_dir, HEADROOM_TASKS[0])
+
+    assert str(data_dir.resolve()) in phase1_prompt
+    assert str(data_dir.resolve()) in phase2_prompt
+    assert "blank notebook" in phase1_prompt
+    assert "app_train" in phase1_prompt
+    assert "bureau" in phase1_prompt
+    assert "Be memory-conscious" in phase1_prompt
+    assert "gc.collect()" in phase1_prompt
+    assert "persistent notebook kernel" in phase2_prompt
+    assert "Task ID: `HT-001`" in phase2_prompt
+    assert "Do not rebuild the entire workflow" in phase2_prompt
+
+
+def test_config_and_result_payloads_include_phase2_task_metadata(tmp_path: Path) -> None:
+    config = AppConfig(
+        openrouter_api_key="test-key",
+        openrouter_model="openai/test-model",
+        home_credit_data_dir=tmp_path / "data",
+        run_id="run-123",
+        run_dir=tmp_path / "jobs" / "agent_test",
+        notebook_path=tmp_path / "jobs" / "agent_test" / "notebook.ipynb",
+        transcript_path=tmp_path / "jobs" / "agent_test" / "transcript.txt",
+        trajectory_path=tmp_path / "jobs" / "agent_test" / "agent" / "trajectory.json",
+        config_path=tmp_path / "jobs" / "agent_test" / "config.json",
+        result_path=tmp_path / "jobs" / "agent_test" / "result.json",
+        log_path=tmp_path / "jobs" / "agent_test" / "runtime.log",
+    )
+    phase1_result = AgentRunResult(
+        final_response="phase 1 complete",
+        steps_used=4,
+        usage=AgentUsageSummary(prompt_tokens=10, completion_tokens=5, total_tokens=15, cost_usd=0.1),
+        trace_steps=tuple(),
+    )
+    phase2_result = AgentRunResult(
+        final_response="phase 2 answer",
+        steps_used=2,
+        usage=AgentUsageSummary(prompt_tokens=4, completion_tokens=2, total_tokens=6, cost_usd=0.02),
+        trace_steps=tuple(),
+    )
+    stage_results = [
+        ("phase1", phase1_result),
+        (task_stage_name(HEADROOM_TASKS[0]), phase2_result),
+    ]
+
+    config_payload = build_config_payload(config)
+    result_payload = build_result_payload(
+        config=config,
+        stage_results=stage_results,
+        phase1_result=phase1_result,
+        phase2_task_results=[(HEADROOM_TASKS[0], phase2_result)],
+        started_at="2026-03-07T00:00:00Z",
+        finished_at="2026-03-07T00:01:00Z",
+        exception_info=None,
+    )
+
+    assert config_payload["headroom"]["task_count"] == 20
+    assert config_payload["headroom"]["task_types"] == {"HT": 10, "HQ": 10}
+    assert config_payload["artifacts"]["log_path"].endswith("runtime.log")
+    assert len(config_payload["prompts"]["phase2_tasks"]) == 20
+    assert result_payload["phase1"]["name"] == "phase1"
+    assert result_payload["phase2"]["n_tasks"] == 1
+    assert result_payload["phase2"]["results"][0]["task_id"] == "HT-001"
+    assert result_payload["phase2"]["results"][0]["stage_name"] == "phase2_ht_001"
+    assert result_payload["phase2"]["task_types"] == {"HT": 1, "HQ": 0}
+    assert result_payload["artifacts"]["runtime_log"] == "runtime.log"
 
 
 def test_build_run_directory_uses_model_name_and_timestamp() -> None:

@@ -3,13 +3,17 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 import inspect
+import logging
 from pathlib import Path
+from time import perf_counter
 from typing import Awaitable, cast
 
 import nbformat
 from nbclient import NotebookClient
-from nbclient.exceptions import CellExecutionError
+from nbclient.exceptions import CellExecutionError, DeadKernelError
 from nbformat import NotebookNode
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -106,14 +110,15 @@ class NotebookEnvironment:
             return
 
         kernel_client = self._client.kc
-        if kernel_client is None:
-            raise NotebookKernelError("Kernel client is missing while closing the environment.")
-        kernel_client.stop_channels()
+        if kernel_client is not None:
+            try:
+                kernel_client.stop_channels()
+            except Exception:
+                logger.warning("Failed to stop kernel channels during close.", exc_info=True)
 
         kernel_manager = self._client.km
-        if kernel_manager is None:
-            raise NotebookKernelError("Kernel manager is missing while closing the environment.")
-        self._run_awaitable(kernel_manager.shutdown_kernel(now=True))
+        if kernel_manager is not None:
+            self._shutdown_kernel(kernel_manager)
 
         self._kernel_started = False
 
@@ -192,12 +197,28 @@ class NotebookEnvironment:
             if cell.cell_type != "code":
                 continue
 
+            source_preview = _cell_source_preview(str(cell.source))
+            started_cell = perf_counter()
+            logger.info("Executing notebook cell %s: %s", index, source_preview)
+
             try:
                 executed_cell = self._client.execute_cell(
                     cell,
                     index,
                     execution_count=self._next_execution_count,
                 )
+            except DeadKernelError as exc:
+                self.save()
+                self._dirty_index = index
+                self._executed_prefix_length = index
+                message = (
+                    "Notebook kernel died while executing "
+                    f"cell {index}: {source_preview}\n"
+                    "This usually indicates the notebook exceeded memory or the Python process crashed. "
+                    "Use smaller, more memory-conscious cells and avoid loading all large raw tables at once."
+                )
+                logger.exception("Kernel died while executing cell %s", index)
+                raise NotebookExecutionFailure(message) from exc
             except CellExecutionError as exc:
                 self.save()
                 self._dirty_index = index
@@ -205,6 +226,7 @@ class NotebookEnvironment:
                 traceback_text = self._extract_error_traceback(cell)
                 if not traceback_text:
                     traceback_text = str(exc)
+                logger.warning("Notebook cell %s failed: %s", index, source_preview)
                 raise NotebookExecutionFailure(traceback_text) from exc
 
             execution_count = cast(int | None, executed_cell.get("execution_count"))
@@ -214,6 +236,11 @@ class NotebookEnvironment:
                 )
             self._next_execution_count = execution_count + 1
             executed_indices.append(index)
+            logger.info(
+                "Completed notebook cell %s in %.2fs",
+                index,
+                perf_counter() - started_cell,
+            )
 
             cell_output = self._summarize_outputs(cast(list[NotebookNode], executed_cell.get("outputs", [])))
             if cell_output:
@@ -252,14 +279,15 @@ class NotebookEnvironment:
     def _restart_kernel(self) -> None:
         if self._kernel_started:
             kernel_client = self._client.kc
-            if kernel_client is None:
-                raise NotebookKernelError("Kernel client missing during kernel restart.")
-            kernel_client.stop_channels()
+            if kernel_client is not None:
+                try:
+                    kernel_client.stop_channels()
+                except Exception:
+                    logger.warning("Failed to stop kernel channels during restart.", exc_info=True)
 
             kernel_manager = self._client.km
-            if kernel_manager is None:
-                raise NotebookKernelError("Kernel manager missing during kernel restart.")
-            self._run_awaitable(kernel_manager.shutdown_kernel(now=True))
+            if kernel_manager is not None:
+                self._shutdown_kernel(kernel_manager)
 
         self._client = self._create_client()
         self._kernel_started = False
@@ -320,3 +348,29 @@ class NotebookEnvironment:
         if inspect.isawaitable(value):
             return asyncio.run(cast(Awaitable[object], value))
         return value
+
+    def _shutdown_kernel(self, kernel_manager: object) -> None:
+        is_alive = getattr(kernel_manager, "is_alive", None)
+        if callable(is_alive):
+            try:
+                alive = self._run_awaitable(is_alive())
+            except Exception:
+                alive = False
+            if not alive:
+                return
+
+        shutdown_kernel = getattr(kernel_manager, "shutdown_kernel", None)
+        if not callable(shutdown_kernel):
+            raise NotebookKernelError("Kernel manager missing shutdown_kernel during cleanup.")
+
+        try:
+            self._run_awaitable(shutdown_kernel(now=True))
+        except Exception:
+            logger.warning("Kernel shutdown failed during cleanup.", exc_info=True)
+
+
+def _cell_source_preview(source: str, *, max_chars: int = 120) -> str:
+    preview = " ".join(line.strip() for line in source.splitlines() if line.strip())
+    if len(preview) <= max_chars:
+        return preview
+    return preview[: max_chars - 3] + "..."

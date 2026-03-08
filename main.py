@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -22,10 +23,16 @@ from agent import (
     NotebookReActAgent,
 )
 from environment import NotebookEnvironment
+from headroom_tasks import HEADROOM_TASKS, HeadroomTask, serialize_headroom_task, task_stage_name
 from tools import NotebookToolExecutor
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_RUNS_DIR = Path("jobs")
+PHASE1_MAX_STEPS = 50
+PHASE2_MAX_STEPS = 50
+LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class AppConfig:
@@ -39,12 +46,20 @@ class AppConfig:
     trajectory_path: Path
     config_path: Path
     result_path: Path
+    log_path: Path
 
 
 def main() -> None:
     load_dotenv()
     config = load_config()
+    configure_logging(config.log_path)
     started_at = utc_now()
+    logger.info(
+        "Starting run %s | model=%s | data_dir=%s",
+        config.run_id,
+        config.openrouter_model,
+        config.home_credit_data_dir,
+    )
     client = OpenAI(api_key=config.openrouter_api_key, base_url=OPENROUTER_BASE_URL)
     write_json(
         config.config_path,
@@ -54,32 +69,60 @@ def main() -> None:
     bootstrap_notebook(notebook_path=config.notebook_path)
 
     stage_results: list[tuple[str, AgentRunResult]] = []
+    phase1_result: AgentRunResult | None = None
+    phase2_task_results: list[tuple[HeadroomTask, AgentRunResult]] = []
     exception_info: dict[str, str] | None = None
-    training_prompt = build_training_prompt(config.home_credit_data_dir)
-    headroom_prompt = build_headroom_prompt(config.home_credit_data_dir)
+    phase1_prompt = build_phase1_prompt(config.home_credit_data_dir)
 
     try:
         with NotebookEnvironment(config.notebook_path) as environment:
             tools = NotebookToolExecutor(environment)
-            agent = NotebookReActAgent(client=client, tools=tools, config=AgentConfig(model=config.openrouter_model))
+            phase1_agent = NotebookReActAgent(
+                client=client,
+                tools=tools,
+                config=AgentConfig(model=config.openrouter_model, max_steps=PHASE1_MAX_STEPS),
+            )
+            phase2_agent = NotebookReActAgent(
+                client=client,
+                tools=tools,
+                config=AgentConfig(model=config.openrouter_model, max_steps=PHASE2_MAX_STEPS),
+            )
 
-            training_result = agent.run(training_prompt, stage_name="training")
-            stage_results.append(("training", training_result))
-            print("Training stage result:")
-            print(training_result.final_response)
+            phase1_result = phase1_agent.run(phase1_prompt, stage_name="phase1")
+            stage_results.append(("phase1", phase1_result))
+            logger.info("Phase 1 completed in %s steps", phase1_result.steps_used)
+            print("Phase 1 result:")
+            print(phase1_result.final_response)
             print()
 
-            headroom_result = agent.run(headroom_prompt, stage_name="headroom")
-            stage_results.append(("headroom", headroom_result))
-            print("Headroom QA result:")
-            print(headroom_result.final_response)
-            print()
+            for index, task in enumerate(HEADROOM_TASKS, start=1):
+                stage_name = task_stage_name(task)
+                phase2_prompt = build_phase2_prompt(config.home_credit_data_dir, task)
+                logger.info(
+                    "Starting phase 2 task %s/%s: %s (%s)",
+                    index,
+                    len(HEADROOM_TASKS),
+                    task.task_id,
+                    task.stage,
+                )
+                print(f"Phase 2 [{index}/{len(HEADROOM_TASKS)}] {task.task_id} — {task.stage}")
+                task_result = phase2_agent.run(phase2_prompt, stage_name=stage_name)
+                stage_results.append((stage_name, task_result))
+                phase2_task_results.append((task, task_result))
+                logger.info(
+                    "Completed phase 2 task %s in %s steps",
+                    task.task_id,
+                    task_result.steps_used,
+                )
+                print(task_result.final_response)
+                print()
     except Exception as exc:
         exception_info = {
             "type": type(exc).__name__,
             "message": str(exc),
             "traceback": traceback.format_exc(),
         }
+        logger.exception("Run failed")
         raise
     finally:
         write_transcript(config.transcript_path, config=config, stage_results=stage_results)
@@ -92,12 +135,15 @@ def main() -> None:
             build_result_payload(
                 config=config,
                 stage_results=stage_results,
+                phase1_result=phase1_result,
+                phase2_task_results=phase2_task_results,
                 started_at=started_at,
                 finished_at=utc_now(),
                 exception_info=exception_info,
             ),
         )
 
+    logger.info("Run artifacts saved to %s", config.run_dir)
     print(f"Run artifacts saved to: {config.run_dir}")
     print(f"Final notebook saved to: {config.notebook_path}")
 
@@ -122,6 +168,7 @@ def load_config() -> AppConfig:
         trajectory_path=run_dir / "agent" / "trajectory.json",
         config_path=run_dir / "config.json",
         result_path=run_dir / "result.json",
+        log_path=run_dir / "runtime.log",
     )
 
 
@@ -133,41 +180,57 @@ def bootstrap_notebook(notebook_path: Path) -> None:
         nbformat.write(notebook, handle)
 
 
-def build_training_prompt(data_dir: Path) -> str:
+def build_phase1_prompt(data_dir: Path) -> str:
     data_dir = data_dir.expanduser().resolve()
-    return f"""Starting from a blank notebook, build a deterministic ML workflow for the Home Credit dataset.
+    return f"""Starting from a blank notebook, act as an end-to-end data scientist for the Home Credit dataset.
 
 Dataset location:
 - Home Credit CSV directory: `{data_dir}`
 
 Requirements:
 - Add the notebook code needed to import libraries and load the data from the dataset directory above.
-- Use `app_train` and `TARGET`.
-- Perform preprocessing suitable for a quick proof of concept.
-- Perform deterministic feature selection.
-- Train a deterministic binary classifier.
+- Define `TARGET = 'TARGET'`.
+- Use these canonical variable names when a table is loaded: `app_train`, `app_test`, `bureau`, `bureau_bal`, `prev_app`, `pos_cash`, `installments`, `credit_card`.
+- Be memory-conscious: start with `app_train` and `app_test`, then process large auxiliary tables incrementally.
+- For large auxiliary tables, load only the columns needed for each aggregation, downcast dtypes when reasonable, aggregate one table at a time, delete large intermediates, and call `gc.collect()` after heavy steps.
+- Do not keep every raw auxiliary table resident in full memory unless it is necessary; phase 2 may reload a missing table from disk when needed.
+- Perform a full workflow: data loading, EDA, preprocessing, feature engineering across auxiliary tables, feature selection, deterministic modeling, validation, and interpretation.
+- Build reusable customer-level features from the auxiliary tables where useful for the model.
+- Train a deterministic binary classifier that supports phase-2 analysis.
 - Save the fitted model in `trained_model`.
 - Save the selected feature names in `selected_features`.
 - Save a validation summary dictionary in `training_metrics`.
-- Print the chosen feature count and validation metrics.
+- Save any preprocessors, score outputs, engineered datasets, and diagnostics needed for follow-up analysis in the persistent kernel.
+- Keep the loaded tables and any derived artifacts available in memory for phase 2.
+- Print the key feature counts, validation metrics, and major modeling decisions.
 """
 
 
-def build_headroom_prompt(data_dir: Path) -> str:
+def build_phase2_prompt(data_dir: Path, task: HeadroomTask) -> str:
     data_dir = data_dir.expanduser().resolve()
-    return f"""Answer a follow-up question in the same persistent kernel without retraining the model.
+    return f"""Continue phase 2 headroom analysis in the same persistent notebook kernel.
+
+Task metadata:
+- Task ID: `{task.task_id}`
+- Task Type: `{task.task_type}`
+- Stage: `{task.stage}`
+- Difficulty: `{task.difficulty}`
+- Failure category: `{task.failure_category}`
 
 Dataset location:
 - Home Credit CSV directory: `{data_dir}`
 
 Requirements:
-- Reuse the existing `trained_model` and `selected_features` from the persistent kernel.
+- Reuse the existing notebook state from phase 1, including loaded tables, engineered features, models, and metrics whenever available.
 - Add new code cells only as needed.
-- Score the first 10 rows of `app_test` using the existing model.
-- If `app_test` is unavailable in the kernel, load only what you need from the dataset directory above.
-- Report whether the existing model artifact was reused from memory.
-- If the model exposes coefficients or feature importances, print the top 5 features.
+- Use notebook code execution to inspect state and compute the answer precisely.
+- Do not rebuild the entire workflow or retrain the main model unless the question explicitly requires a focused comparison.
+- If a required table or object is missing, load or derive only the minimum needed from the dataset directory above.
+- Keep useful intermediate results in the notebook so later headroom tasks can reuse them.
 - Finish with a concise plain-text answer after executing notebook code.
+
+Question:
+{task.prompt}
 """
 
 
@@ -195,11 +258,21 @@ def build_config_payload(config: AppConfig) -> dict[str, object]:
         "agent": {
             "provider": "openrouter",
             "model_name": config.openrouter_model,
-            "max_steps": AgentConfig.max_steps,
+            "phase1_max_steps": PHASE1_MAX_STEPS,
+            "phase2_max_steps": PHASE2_MAX_STEPS,
             "temperature": AgentConfig.temperature,
         },
         "dataset": {
             "home_credit_data_dir": str(config.home_credit_data_dir),
+        },
+        "headroom": {
+            "source_notebook": "home_credit_headroom_project_new.ipynb",
+            "task_count": len(HEADROOM_TASKS),
+            "task_types": _count_task_types(HEADROOM_TASKS),
+            "tasks": [
+                serialize_headroom_task(task, include_source_prompt=True)
+                for task in HEADROOM_TASKS
+            ],
         },
         "artifacts": {
             "run_dir": str(config.run_dir),
@@ -207,10 +280,17 @@ def build_config_payload(config: AppConfig) -> dict[str, object]:
             "transcript_path": str(config.transcript_path),
             "trajectory_path": str(config.trajectory_path),
             "result_path": str(config.result_path),
+            "log_path": str(config.log_path),
         },
         "prompts": {
-            "training": build_training_prompt(config.home_credit_data_dir),
-            "headroom": build_headroom_prompt(config.home_credit_data_dir),
+            "phase1": build_phase1_prompt(config.home_credit_data_dir),
+            "phase2_tasks": [
+                {
+                    **serialize_headroom_task(task),
+                    "rendered_prompt": build_phase2_prompt(config.home_credit_data_dir, task),
+                }
+                for task in HEADROOM_TASKS
+            ],
         },
     }
 
@@ -219,6 +299,8 @@ def build_result_payload(
     *,
     config: AppConfig,
     stage_results: list[tuple[str, AgentRunResult]],
+    phase1_result: AgentRunResult | None,
+    phase2_task_results: list[tuple[HeadroomTask, AgentRunResult]],
     started_at: str,
     finished_at: str,
     exception_info: dict[str, str] | None,
@@ -243,6 +325,21 @@ def build_result_payload(
                 "api_request_times_msec": api_request_times,
             },
         },
+        "phase1": _serialize_run_summary("phase1", phase1_result),
+        "phase2": {
+            "n_tasks": len(phase2_task_results),
+            "task_types": _count_task_types(task for task, _ in phase2_task_results),
+            "results": [
+                {
+                    **serialize_headroom_task(task),
+                    "stage_name": task_stage_name(task),
+                    "final_response": result.final_response,
+                    "steps_used": result.steps_used,
+                    "usage": asdict(result.usage),
+                }
+                for task, result in phase2_task_results
+            ],
+        },
         "stages": [
             {
                 "name": stage_name,
@@ -259,6 +356,7 @@ def build_result_payload(
             "notebook": str(config.notebook_path.relative_to(config.run_dir)),
             "transcript": str(config.transcript_path.relative_to(config.run_dir)),
             "trajectory": str(config.trajectory_path.relative_to(config.run_dir)),
+            "runtime_log": str(config.log_path.relative_to(config.run_dir)),
         },
     }
 
@@ -276,7 +374,8 @@ def build_trajectory_payload(
             "model_name": config.openrouter_model,
             "extra": {
                 "temperature": AgentConfig.temperature,
-                "max_steps": AgentConfig.max_steps,
+                "phase1_max_steps": PHASE1_MAX_STEPS,
+                "phase2_max_steps": PHASE2_MAX_STEPS,
             },
         },
         "steps": [
@@ -398,6 +497,46 @@ def write_json(path: Path, payload: dict[str, object]) -> None:
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def configure_logging(log_path: Path) -> None:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.setLevel(logging.INFO)
+
+    # Suppress verbose OpenRouter/API request logging from httpx and openai
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("openai").setLevel(logging.WARNING)
+
+    formatter = logging.Formatter(LOG_FORMAT)
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    root_logger.addHandler(stream_handler)
+
+    file_handler = logging.FileHandler(log_path, encoding="utf-8")
+    file_handler.setFormatter(formatter)
+    root_logger.addHandler(file_handler)
+
+
+def _serialize_run_summary(stage_name: str, result: AgentRunResult | None) -> dict[str, object] | None:
+    if result is None:
+        return None
+    return {
+        "name": stage_name,
+        "final_response": result.final_response,
+        "steps_used": result.steps_used,
+        "usage": asdict(result.usage),
+    }
+
+
+def _count_task_types(tasks: object) -> dict[str, int]:
+    counts = {"HT": 0, "HQ": 0}
+    for task in tasks:
+        if getattr(task, "task_type", None) in counts:
+            counts[task.task_type] += 1
+    return counts
 
 
 def _require_env(key: str) -> str:
