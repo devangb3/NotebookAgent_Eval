@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from app_config import AppConfig
 
 DEFAULT_RUNS_DIR = Path("jobs")
-TASK_MAX_STEPS = 50
+TASK_MAX_STEPS = 20
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 
