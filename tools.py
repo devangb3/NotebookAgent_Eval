@@ -100,9 +100,10 @@ class NotebookToolExecutor:
                             "position": {
                                 "type": "integer",
                                 "minimum": 0,
+                                "description": "Optional insertion index. Defaults to appending at the end.",
                             },
                         },
-                        "required": ["source", "cell_type", "position"],
+                        "required": ["source", "cell_type"],
                         "additionalProperties": False,
                     },
                 },
@@ -183,11 +184,16 @@ class NotebookToolExecutor:
     def get_all_cells(self) -> str:
         return format_notebook_state(self.environment.get_state())
 
-    def add_cell(self, source: str, cell_type: CellType, position: int) -> str:
+    def add_cell(self, source: str, cell_type: CellType, position: int | None = None) -> str:
         if cell_type == "code":
             cell = new_code_cell(source=source)
         else:
             cell = new_markdown_cell(source=source)
+        max_index = len(self.environment.notebook.cells)
+        if position is None:
+            position = max_index
+        elif position > max_index:
+            position = max_index
         self.environment.insert_cell(cell=cell, position=position)
         return self._result_message(
             f"Added {cell_type} cell at index {position}.",
@@ -235,7 +241,13 @@ class NotebookToolExecutor:
         if tool_name == "add_cell":
             source = _require_string(arguments, "source")
             cell_type = _require_cell_type(arguments, "cell_type")
-            position = _require_int(arguments, "position")
+            position_value = arguments.get("position")
+            if position_value is None:
+                position = None
+            elif isinstance(position_value, bool) or not isinstance(position_value, int):
+                raise TypeError("Tool argument 'position' must be an integer when provided.")
+            else:
+                position = position_value
             return self.add_cell(source=source, cell_type=cell_type, position=position)
 
         if tool_name == "modify_cell":
