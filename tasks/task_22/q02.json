@@ -1,0 +1,9 @@
+{
+  "task_id": "task_22_q02",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_22/data",
+  "problem_statement": "Customer Churn Prediction. A telecom company wants to build and evaluate logistic regression models to predict which customers will churn, using demographic and service usage features.",
+  "question": "Fit a logistic regression on the train split predicting 'churned' using all features (standardize with StandardScaler, encode categoricals with drop_first=True). Report the AUC-ROC on the test split, rounded to 2 decimal places.",
+  "ground_truth": "0.87",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code. Use sklearn LogisticRegression with max_iter=1000, random_state=42. Use sklearn StandardScaler. Fit scaler on train, transform both train and test."
+}

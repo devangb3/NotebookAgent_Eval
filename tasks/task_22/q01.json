@@ -1,0 +1,9 @@
+{
+  "task_id": "task_22_q01",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_22/data",
+  "problem_statement": "Customer Churn Prediction. A telecom company wants to build and evaluate logistic regression models to predict which customers will churn, using demographic and service usage features.",
+  "question": "Fit a logistic regression on the train split predicting 'churned' using all available features (encode contract_type and internet_service as dummies with drop_first=True). Among the original numeric features only (tenure_months, monthly_charges, total_charges, num_support_tickets, has_online_backup, has_streaming, senior_citizen, partner), which has the highest odds ratio in the multivariate model? Report the feature name.",
+  "ground_truth": "senior_citizen",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code. Use sklearn LogisticRegression with max_iter=1000, random_state=42. Odds ratio = exp(coefficient) from the unscaled (not standardized) model."
+}

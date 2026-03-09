@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_08/data",
   "problem_statement": "Students, Courses, Attendance, and Clubs. A school administrator wants to connect coursework, attendance, and extracurricular participation to performance patterns.",
-  "question": "Which student_id has the largest homework-over-exam gap on average across enrolled courses? Break ties by the smallest student_id.",
-  "ground_truth": "S07",
+  "question": "Among students enrolled in at least 4 courses, compute each student's credit-weighted average of homework-exam gaps across their enrollments. Which student_id has the largest credit-weighted gap? Break ties by smallest student_id.",
+  "ground_truth": "S16",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

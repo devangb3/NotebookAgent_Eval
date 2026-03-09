@@ -1,0 +1,9 @@
+{
+  "task_id": "task_21_q02",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_21/data",
+  "problem_statement": "Real Estate Prices, Property Features, and Market Data. A real estate analyst wants to build and evaluate linear regression models to understand property pricing drivers.",
+  "question": "Fit an OLS linear regression of sale_price on all numeric features (sqft, bedrooms, bathrooms, year_built, lot_acres, garage_spaces, renovated, distance_miles, months_listed) using the train split. Compute the Variance Inflation Factor (VIF) for each feature. Which feature has the highest VIF? Report the feature name.",
+  "ground_truth": "bedrooms",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code. VIF for feature j is 1/(1-R²_j), where R²_j comes from regressing feature j on all other features."
+}

@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_05/data",
   "problem_statement": "Streaming Views, Catalog, and Subscriptions. A streaming platform wants to analyze engagement, completion, binge behavior, and viewing patterns tied to subscriber outcomes.",
-  "question": "For user U05, considering only qualifying view events that occurred while the subscription was active, were not in genre `Kids`, and fell in the 14-day window ending on `sub_end` (inclusive), how many binge streaks lasted at least 3 straight calendar days with 2 or more qualifying view events every day?",
-  "ground_truth": "1",
+  "question": "Among users with at least 10 view events during their active subscription period, compute each user's average daily watch minutes considering only the calendar days on which they actually watched something. Which user_id has the lowest such average? Break ties alphabetically.",
+  "ground_truth": "U08",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

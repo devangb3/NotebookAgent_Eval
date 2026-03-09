@@ -1,0 +1,9 @@
+{
+  "task_id": "task_21_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_21/data",
+  "problem_statement": "Real Estate Prices, Property Features, and Market Data. A real estate analyst wants to build and evaluate linear regression models to understand property pricing drivers.",
+  "question": "Fit an OLS linear regression of sale_price on all numeric features using the train split. For each feature, measure the drop in training R-squared when that single feature is removed from the model. Which feature's removal causes the smallest R-squared drop? Break ties alphabetically. Report the feature name.",
+  "ground_truth": "distance_miles",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code. Use sklearn LinearRegression."
+}

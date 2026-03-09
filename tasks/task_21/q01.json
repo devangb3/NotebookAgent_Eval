@@ -1,0 +1,9 @@
+{
+  "task_id": "task_21_q01",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_21/data",
+  "problem_statement": "Real Estate Prices, Property Features, and Market Data. A real estate analyst wants to build and evaluate linear regression models to understand property pricing drivers.",
+  "question": "Using properties in split.csv marked as 'train', fit an OLS linear regression of sale_price on sqft alone. Then perform forward feature selection: among the remaining numeric features (bedrooms, bathrooms, year_built, lot_acres, garage_spaces, renovated, distance_miles, months_listed), which single feature produces the largest increase in training R-squared when added alongside sqft? Report the feature name.",
+  "ground_truth": "garage_spaces",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code. Use sklearn LinearRegression for model fitting."
+}
