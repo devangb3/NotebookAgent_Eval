@@ -20,7 +20,6 @@ Rules:
 - Do not reload the dataset unless the task explicitly requires it.
 - Load all task data exclusively from the path provided in the task prompt;
 - Once you have enough evidence to answer the task, call the `final_answer` tool with the exact answer.
-- Plain-text completion is allowed as a fallback, but `final_answer` is preferred.
 """
 
 
@@ -258,47 +257,58 @@ class NotebookReActAgent:
 
 
 def _extract_response_message(response: object) -> object:
-    choices = getattr(response, "choices", None)
-    if not isinstance(choices, list) or not choices:
-        raise AgentProtocolError("Chat completion response does not contain choices.")
+    choices = _read_sequence_field(response, "choices")
+    if not choices:
+        error_payload = _read_field(response, "error")
+        if error_payload is not None:
+            error_message = _extract_error_message(error_payload)
+            raise AgentProtocolError(
+                f"Chat completion request failed before a choice was returned: {error_message}"
+            )
+        raise AgentProtocolError(
+            "Chat completion response does not contain choices."
+        )
     first_choice = choices[0]
-    message = getattr(first_choice, "message", None)
+    message = _read_field(first_choice, "message")
     if message is None:
         raise AgentProtocolError("Chat completion choice does not contain a message.")
     return message
 
 
 def _extract_message_content(message: object) -> str:
-    content = getattr(message, "content", "")
+    content = _read_field(message, "content")
     if isinstance(content, str):
         return content
     if content is None:
         return ""
+    if isinstance(content, list):
+        text_chunks = [_extract_content_part_text(part) for part in content]
+        return "".join(chunk for chunk in text_chunks if chunk)
     raise AgentProtocolError(f"Unsupported assistant content type: {type(content)!r}")
 
 
 def _extract_tool_calls(message: object) -> tuple[AgentToolCall, ...]:
-    raw_tool_calls = getattr(message, "tool_calls", None)
+    raw_tool_calls = _read_field(message, "tool_calls")
     if raw_tool_calls is None:
         return tuple()
-    if not isinstance(raw_tool_calls, list):
+    if not isinstance(raw_tool_calls, (list, tuple)):
         raise AgentProtocolError("Assistant tool_calls payload must be a list.")
 
     calls: list[AgentToolCall] = []
     for raw_tool_call in raw_tool_calls:
-        tool_call_id = getattr(raw_tool_call, "id", None)
+        tool_call_id = _read_field(raw_tool_call, "id")
         if not isinstance(tool_call_id, str) or not tool_call_id:
             raise AgentProtocolError("Tool call is missing a valid id.")
 
-        function_payload = getattr(raw_tool_call, "function", None)
+        function_payload = _read_field(raw_tool_call, "function")
         if function_payload is None:
             raise AgentProtocolError("Tool call is missing its function payload.")
 
-        tool_name = getattr(function_payload, "name", None)
+        tool_name = _read_field(function_payload, "name")
         if not isinstance(tool_name, str) or not tool_name:
             raise AgentProtocolError("Tool call is missing a valid function name.")
 
-        arguments_json = getattr(function_payload, "arguments", None)
+        arguments_json = _read_field(function_payload, "arguments")
         if not isinstance(arguments_json, str):
             raise AgentProtocolError("Tool call arguments must be a JSON string.")
 
@@ -332,7 +342,7 @@ def _extract_final_answer(arguments_json: str) -> str:
 
 
 def _extract_step_metrics(response: object, *, api_duration_ms: float) -> AgentStepMetrics:
-    usage = getattr(response, "usage", None)
+    usage = _read_field(response, "usage")
     prompt_tokens = _read_int_field(usage, "prompt_tokens")
     completion_tokens = _read_int_field(usage, "completion_tokens")
     total_tokens = _read_int_field(usage, "total_tokens")
@@ -372,6 +382,33 @@ def _read_field(value: object, key: str) -> object:
     if isinstance(value, dict):
         return value.get(key)
     return getattr(value, key, None)
+
+
+def _read_sequence_field(value: object, key: str) -> tuple[object, ...]:
+    raw_value = _read_field(value, key)
+    if isinstance(raw_value, (list, tuple)):
+        return tuple(raw_value)
+    return tuple()
+
+
+def _extract_error_message(error_payload: object) -> str:
+    message = _read_field(error_payload, "message")
+    if isinstance(message, str) and message.strip():
+        return message
+    return str(error_payload)
+
+
+def _extract_content_part_text(part: object) -> str:
+    if isinstance(part, str):
+        return part
+    text = _read_field(part, "text")
+    if isinstance(text, str):
+        return text
+    if text is not None:
+        nested_text = _read_field(text, "value")
+        if isinstance(nested_text, str):
+            return nested_text
+    return ""
 
 
 def _merge_usage(summary: AgentUsageSummary, metrics: AgentStepMetrics) -> AgentUsageSummary:

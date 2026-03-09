@@ -25,10 +25,10 @@ class AppConfig:
     run_dir: Path
     notebook_path: Path
     transcript_path: Path
-    trajectory_path: Path
     config_path: Path
     result_path: Path
     log_path: Path
+    exception_path: Path
     task_artifacts_dir: Path
 
 
@@ -59,10 +59,10 @@ def load_config(
         run_dir=run_dir,
         notebook_path=notebook_path,
         transcript_path=run_dir / "transcript.txt",
-        trajectory_path=run_dir / "agent" / "trajectory.json",
         config_path=run_dir / "config.json",
         result_path=run_dir / "result.json",
         log_path=run_dir / "runtime.log",
+        exception_path=run_dir / "exception.txt",
         task_artifacts_dir=run_dir / "tasks",
     )
 

@@ -11,7 +11,14 @@ import benchmark_runner
 from nbclient.exceptions import DeadKernelError
 from nbformat.v4 import new_code_cell, new_notebook
 
-from agent import AgentConfig, AgentMaxStepsExceeded, AgentRunResult, AgentUsageSummary, NotebookReActAgent
+from agent import (
+    AgentConfig,
+    AgentMaxStepsExceeded,
+    AgentProtocolError,
+    AgentRunResult,
+    AgentUsageSummary,
+    NotebookReActAgent,
+)
 from app_config import AppConfig
 from benchmark_runner import TaskExecutionRecord, run_benchmark
 from environment import NotebookEnvironment, NotebookExecutionFailure
@@ -212,6 +219,94 @@ def test_agent_runs_tool_loop_with_mocked_client(tmp_path: Path) -> None:
         assert "Cell 1 output" in result.trace_steps[1].tool_results[0]
         snapshot = environment.get_state()
         assert snapshot.cells[1].outputs_summary.strip() == "12"
+
+
+def test_agent_accepts_dict_shaped_chat_completion_responses(tmp_path: Path) -> None:
+    notebook_path = tmp_path / "agent-dict-response.ipynb"
+    _write_notebook(
+        notebook_path,
+        [
+            new_code_cell("value = 3"),
+        ],
+    )
+
+    responses = [
+        {
+            "choices": [
+                {
+                    "message": {
+                        "content": "",
+                        "tool_calls": [
+                            {
+                                "id": "call-add",
+                                "function": {
+                                    "name": "add_cell",
+                                    "arguments": '{"source":"print(value * 4)","cell_type":"code","position":1}',
+                                },
+                            }
+                        ],
+                    }
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 4,
+                "total_tokens": 14,
+                "cost": 0.01,
+            },
+        },
+        {
+            "choices": [
+                {
+                    "message": {
+                        "content": "",
+                        "tool_calls": [
+                            {
+                                "id": "call-exec",
+                                "function": {
+                                    "name": "execute_notebook",
+                                    "arguments": "{}",
+                                },
+                            }
+                        ],
+                    }
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 12,
+                "completion_tokens": 5,
+                "total_tokens": 17,
+                "cost": 0.02,
+            },
+        },
+        {
+            "choices": [
+                {
+                    "message": {
+                        "content": "Completed the task using the persistent notebook kernel.",
+                        "tool_calls": [],
+                    }
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 8,
+                "completion_tokens": 3,
+                "total_tokens": 11,
+                "cost": 0.03,
+            },
+        },
+    ]
+
+    with NotebookEnvironment(notebook_path) as environment:
+        agent = NotebookReActAgent(
+            client=FakeClient(responses=responses),
+            tools=NotebookToolExecutor(environment),
+            config=AgentConfig(model="mock-model", max_steps=5),
+        )
+        result = agent.run("Multiply the seeded notebook value by four.")
+
+        assert "persistent notebook kernel" in result.final_response
+        assert result.usage.total_tokens == 42
 
 
 def test_agent_prefers_final_answer_tool_for_termination(tmp_path: Path) -> None:
@@ -538,10 +633,10 @@ def test_config_and_result_payloads_include_task_file_metadata(tmp_path: Path) -
         run_dir=tmp_path / "jobs" / "agent_test",
         notebook_path=tmp_path / "jobs" / "agent_test" / "notebook.ipynb",
         transcript_path=tmp_path / "jobs" / "agent_test" / "transcript.txt",
-        trajectory_path=tmp_path / "jobs" / "agent_test" / "agent" / "trajectory.json",
         config_path=tmp_path / "jobs" / "agent_test" / "config.json",
         result_path=tmp_path / "jobs" / "agent_test" / "result.json",
         log_path=tmp_path / "jobs" / "agent_test" / "runtime.log",
+        exception_path=tmp_path / "jobs" / "agent_test" / "exception.txt",
         task_artifacts_dir=tmp_path / "jobs" / "agent_test" / "tasks",
     )
     stage_name = task_stage_name(task)
@@ -557,6 +652,7 @@ def test_config_and_result_payloads_include_task_file_metadata(tmp_path: Path) -
         stage_name=stage_name,
         result=task_result,
         task_notebook_path=config.task_artifacts_dir / stage_name / "notebook.ipynb",
+        task_trajectory_path=config.task_artifacts_dir / stage_name / "trajectory.json",
     )
 
     config_payload = build_config_payload(config)
@@ -624,10 +720,10 @@ def test_run_benchmark_continues_after_max_steps_failure(tmp_path: Path, monkeyp
         run_dir=tmp_path / "jobs" / "agent_test",
         notebook_path=tmp_path / "jobs" / "agent_test" / "notebook.ipynb",
         transcript_path=tmp_path / "jobs" / "agent_test" / "transcript.txt",
-        trajectory_path=tmp_path / "jobs" / "agent_test" / "agent" / "trajectory.json",
         config_path=tmp_path / "jobs" / "agent_test" / "config.json",
         result_path=tmp_path / "jobs" / "agent_test" / "result.json",
         log_path=tmp_path / "jobs" / "agent_test" / "runtime.log",
+        exception_path=tmp_path / "jobs" / "agent_test" / "exception.txt",
         task_artifacts_dir=tmp_path / "jobs" / "agent_test" / "tasks",
     )
 
@@ -666,6 +762,7 @@ def test_run_benchmark_continues_after_max_steps_failure(tmp_path: Path, monkeyp
             stage_name=stage_name,
             result=result,
             task_notebook_path=persisted_path,
+            task_trajectory_path=config.task_artifacts_dir / stage_name / "trajectory.json",
         )
 
     monkeypatch.setattr(benchmark_runner, "OpenAI", _FakeOpenAI)
@@ -683,6 +780,90 @@ def test_run_benchmark_continues_after_max_steps_failure(tmp_path: Path, monkeyp
     assert by_task_id["T-001"]["failure_type"] == "AgentMaxStepsExceeded"
     assert "20 steps" in by_task_id["T-001"]["failure_message"]
     assert by_task_id["T-001"]["final_response"].startswith("FAILED:")
+    assert by_task_id["T-002"]["status"] == "completed"
+    assert by_task_id["T-002"]["failure_type"] is None
+
+
+def test_run_benchmark_continues_after_agent_protocol_failure(tmp_path: Path, monkeypatch: object) -> None:
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    (data_root / "dataset.csv").write_text("value\n1\n", encoding="utf-8")
+    first_task = tmp_path / "task1.json"
+    second_task = tmp_path / "task2.json"
+    first_task.write_text(json.dumps(_task_payload(task_id="T-001", data_source_path="dataset.csv")), encoding="utf-8")
+    second_task.write_text(json.dumps(_task_payload(task_id="T-002", data_source_path="dataset.csv")), encoding="utf-8")
+    task_files = load_task_files([str(first_task), str(second_task)], data_root=data_root)
+    config = AppConfig(
+        openrouter_api_key="test-key",
+        openrouter_model="openai/gpt-4.1-mini",
+        data_root=data_root,
+        task_files=task_files,
+        notebook_timeout_seconds=1234,
+        max_steps=20,
+        max_workers=2,
+        run_id="run-123",
+        run_dir=tmp_path / "jobs" / "agent_test",
+        notebook_path=tmp_path / "jobs" / "agent_test" / "notebook.ipynb",
+        transcript_path=tmp_path / "jobs" / "agent_test" / "transcript.txt",
+        config_path=tmp_path / "jobs" / "agent_test" / "config.json",
+        result_path=tmp_path / "jobs" / "agent_test" / "result.json",
+        log_path=tmp_path / "jobs" / "agent_test" / "runtime.log",
+        exception_path=tmp_path / "jobs" / "agent_test" / "exception.txt",
+        task_artifacts_dir=tmp_path / "jobs" / "agent_test" / "tasks",
+    )
+
+    class _FakeOpenAI:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            del args, kwargs
+
+    def _fake_run_task(
+        *,
+        client: object,
+        config: AppConfig,
+        task_file: TaskFile,
+        task_index: int,
+        total_tasks: int,
+    ) -> TaskExecutionRecord:
+        del client, total_tasks
+        stage_name = task_stage_name(task_file.task)
+        task_notebook_path = config.run_dir / f"notebook_{task_index}.ipynb"
+        bootstrap_notebook(task_notebook_path)
+        if task_index == 1:
+            raise AgentProtocolError("Chat completion response does not contain choices.")
+        persisted_path = persist_task_notebook(
+            source_notebook_path=task_notebook_path,
+            task_artifacts_dir=config.task_artifacts_dir,
+            stage_name=stage_name,
+        )
+        result = AgentRunResult(
+            final_response="task completed",
+            steps_used=1,
+            usage=AgentUsageSummary(),
+            trace_steps=tuple(),
+        )
+        return TaskExecutionRecord(
+            task=task_file.task,
+            task_file_path=task_file.path,
+            stage_name=stage_name,
+            result=result,
+            task_notebook_path=persisted_path,
+            task_trajectory_path=config.task_artifacts_dir / stage_name / "trajectory.json",
+        )
+
+    monkeypatch.setattr(benchmark_runner, "OpenAI", _FakeOpenAI)
+    monkeypatch.setattr(benchmark_runner, "_run_task", _fake_run_task)
+
+    run_benchmark(config)
+
+    result_payload = json.loads(config.result_path.read_text(encoding="utf-8"))
+    assert result_payload["exception_info"] is None
+    assert result_payload["tasks"]["n_tasks"] == 2
+    assert result_payload["tasks"]["n_failed_tasks"] == 1
+    assert result_payload["tasks"]["n_completed_tasks"] == 1
+    by_task_id = {result["task_id"]: result for result in result_payload["tasks"]["results"]}
+    assert by_task_id["T-001"]["status"] == "failed"
+    assert by_task_id["T-001"]["failure_type"] == "AgentProtocolError"
+    assert "does not contain choices" in by_task_id["T-001"]["failure_message"]
     assert by_task_id["T-002"]["status"] == "completed"
     assert by_task_id["T-002"]["failure_type"] is None
 
@@ -775,7 +956,7 @@ class FakeUsage:
 
 
 class FakeCompletions:
-    def __init__(self, responses: list[FakeResponse]) -> None:
+    def __init__(self, responses: list[object]) -> None:
         self._responses = responses
         self._call_count = 0
         self.calls: list[dict[str, object]] = []
@@ -788,7 +969,7 @@ class FakeCompletions:
         tools: list[dict[str, object]],
         tool_choice: str,
         temperature: float,
-    ) -> FakeResponse:
+    ) -> object:
         self.calls.append(
             {
                 "model": model,
@@ -811,7 +992,7 @@ class FakeChat:
 
 
 class FakeClient:
-    def __init__(self, responses: list[FakeResponse]) -> None:
+    def __init__(self, responses: list[object]) -> None:
         self._chat = FakeChat(completions=FakeCompletions(responses))
 
     @property

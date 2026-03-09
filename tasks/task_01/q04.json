@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_01/data",
   "problem_statement": "Retail Orders, Products, and Returns. A retailer wants to understand net sales after partial returns and how returns interact with products, channels, and customer behavior.",
-  "question": "Which product gives up the largest fraction of sold units to returns?",
-  "ground_truth": "P02",
+  "question": "Using order_date as the date of record, compute each day's gross revenue and the value charged back for returned units at the original discounted unit price. Among dates with at least 500 of gross revenue, on which date did returns consume the largest share of that day's gross revenue? If there is a tie, use the earliest date.",
+  "ground_truth": "2024-01-05",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

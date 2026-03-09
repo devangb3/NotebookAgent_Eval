@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_08/data",
   "problem_statement": "Students, Courses, Attendance, and Clubs. A school administrator wants to connect coursework, attendance, and extracurricular participation to performance patterns.",
-  "question": "If each student's credit-weighted exam performance is scaled by attendance, which homeroom comes out best on average?",
-  "ground_truth": "HR2",
+  "question": "For each student, compute a credit-weighted exam average and multiply it by the student's overall attendance rate. Restrict to students who took at least one STEM course and at least one Humanities course and whose monthly attendance rate was never below 85%. Which homeroom has the highest average attendance-penalized score across those students? If there is a tie, use the smallest homeroom label.",
+  "ground_truth": "HR5",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }
