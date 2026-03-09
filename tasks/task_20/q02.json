@@ -1,0 +1,9 @@
+{
+  "task_id": "task_20_q02",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_20/data",
+  "problem_statement": "Farm Fields, Plantings, Weather, Harvests, and Pests. An agronomy team wants to compare crop productivity, timing, irrigation exposure, and pest pressure across fields.",
+  "question": "Which field_id has the greatest shortfall in yield per hectare versus the average yield per hectare of its own crop?",
+  "ground_truth": "F07",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

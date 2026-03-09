@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from app_config import AppConfig
 
 DEFAULT_RUNS_DIR = Path("jobs")
-TASK_MAX_STEPS = 20
 LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 
@@ -49,7 +48,7 @@ def build_config_payload(config: AppConfig) -> dict[str, object]:
         "agent": {
             "provider": "openrouter",
             "model_name": config.openrouter_model,
-            "task_max_steps": TASK_MAX_STEPS,
+            "task_max_steps": config.max_steps,
             "temperature": 0.0,
         },
         "tasks": {
@@ -62,10 +61,11 @@ def build_config_payload(config: AppConfig) -> dict[str, object]:
             "run_dir": str(config.run_dir),
             "notebook_path": str(config.notebook_path),
             "transcript_path": str(config.transcript_path),
-            "trajectory_path": str(config.trajectory_path),
             "result_path": str(config.result_path),
             "log_path": str(config.log_path),
+            "exception_path": str(config.exception_path),
             "task_artifacts_dir": str(config.task_artifacts_dir),
+            "trajectory": "per-task in tasks/<stage>/trajectory.json",
         },
     }
 
@@ -101,6 +101,8 @@ def build_result_payload(
         },
         "tasks": {
             "n_tasks": len(task_results),
+            "n_completed_tasks": sum(1 for record in task_results if record.error_type is None),
+            "n_failed_tasks": sum(1 for record in task_results if record.error_type is not None),
             "data_source_types": count_data_source_types([record.task for record in task_results]),
             "results": [
                 {
@@ -111,6 +113,9 @@ def build_result_payload(
                     "steps_used": record.result.steps_used,
                     "usage": asdict(record.result.usage),
                     "task_notebook": str(record.task_notebook_path.relative_to(config.run_dir)),
+                    "status": "failed" if record.error_type is not None else "completed",
+                    "failure_type": record.error_type,
+                    "failure_message": record.error_message,
                 }
                 for record in task_results
             ],
@@ -128,9 +133,8 @@ def build_result_payload(
         "started_at": started_at,
         "finished_at": finished_at,
         "artifacts": {
-            "notebook": str(config.notebook_path.relative_to(config.run_dir)),
             "transcript": str(config.transcript_path.relative_to(config.run_dir)),
-            "trajectory": str(config.trajectory_path.relative_to(config.run_dir)),
+            "trajectory": "per-task in tasks/<stage>/trajectory.json",
             "runtime_log": str(config.log_path.relative_to(config.run_dir)),
         },
     }
@@ -149,7 +153,7 @@ def build_trajectory_payload(
             "model_name": config.openrouter_model,
             "extra": {
                 "temperature": 0.0,
-                "task_max_steps": TASK_MAX_STEPS,
+                "task_max_steps": config.max_steps,
             },
         },
         "steps": [serialize_trace_step(step) for step in flatten_trace_steps(stage_results)],
@@ -295,9 +299,25 @@ def persist_task_notebook(
     return destination
 
 
+def persist_task_trajectory(
+    *,
+    task_artifacts_dir: Path,
+    stage_name: str,
+    config: "AppConfig",
+    stage_results: list[tuple[str, AgentRunResult]],
+) -> Path:
+    """Write trajectory.json for a single task alongside its notebook."""
+    trajectory_path = task_artifacts_dir / stage_name / "trajectory.json"
+    write_json(trajectory_path, build_trajectory_payload(config=config, stage_results=stage_results))
+    return trajectory_path
+
+
 class TaskExecutionRecordLike:
     task: object
     task_file_path: Path
     stage_name: str
     result: AgentRunResult
     task_notebook_path: Path
+    task_trajectory_path: Path
+    error_type: str | None
+    error_message: str | None

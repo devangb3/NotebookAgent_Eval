@@ -1,0 +1,9 @@
+{
+  "task_id": "task_06_q03",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_06/data",
+  "problem_statement": "SaaS Accounts, Plans, Invoices, and Tickets. A B2B SaaS finance and support team wants to analyze cash collection, upgrades, ticket load, and account efficiency.",
+  "question": "How many accounts upgraded their plan tier at least once and also never paid an invoice late?",
+  "ground_truth": "2",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

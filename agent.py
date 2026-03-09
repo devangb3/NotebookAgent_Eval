@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import perf_counter
@@ -18,7 +19,7 @@ Rules:
 - If notebook execution fails, inspect the traceback, then repair the relevant cell and execute again.
 - Do not reload the dataset unless the task explicitly requires it.
 - Load all task data exclusively from the path provided in the task prompt;
-- When the task is complete, respond with a short plain-text summary and do not call more tools.
+- Once you have enough evidence to answer the task, call the `final_answer` tool with the exact answer.
 """
 
 
@@ -120,6 +121,7 @@ class NotebookReActAgent:
 
     def run(self, prompt: str, *, stage_name: str = "run") -> AgentRunResult:
         initial_state = format_notebook_state(self._tools.environment.get_state())
+        tool_schemas = self._tools.tool_schemas
         messages: list[dict[str, object]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -134,6 +136,14 @@ class NotebookReActAgent:
         usage_summary = AgentUsageSummary()
 
         for step in range(1, self._config.max_steps + 1):
+            remaining_steps = self._config.max_steps - step + 1
+            if remaining_steps <= 3:
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": _build_step_budget_warning(remaining_steps),
+                    }
+                )
             request_messages = tuple(
                 copy.deepcopy(cast(dict[str, object], message)) for message in messages
             )
@@ -142,7 +152,7 @@ class NotebookReActAgent:
             response = self._client.chat.completions.create(
                 model=self._config.model,
                 messages=messages,
-                tools=self._tools.tool_schemas,
+                tools=tool_schemas,
                 tool_choice="auto",
                 temperature=self._config.temperature,
             )
@@ -193,6 +203,28 @@ class NotebookReActAgent:
                     trace_steps=tuple(trace_steps),
                 )
 
+            final_answer_calls = [call for call in tool_calls if call.name == "final_answer"]
+            if final_answer_calls:
+                final_response = _extract_final_answer(final_answer_calls[0].arguments_json)
+                trace_steps.append(
+                    AgentTraceStep(
+                        step_id=step,
+                        stage=stage_name,
+                        timestamp=started_at,
+                        request_messages=request_messages,
+                        assistant_content=content,
+                        tool_calls=tool_calls,
+                        tool_results=tuple(),
+                        metrics=step_metrics,
+                    )
+                )
+                return AgentRunResult(
+                    final_response=final_response,
+                    steps_used=step,
+                    usage=usage_summary,
+                    trace_steps=tuple(trace_steps),
+                )
+
             for tool_call in tool_calls:
                 tool_result = self._tools.dispatch(
                     tool_name=tool_call.name,
@@ -225,47 +257,58 @@ class NotebookReActAgent:
 
 
 def _extract_response_message(response: object) -> object:
-    choices = getattr(response, "choices", None)
-    if not isinstance(choices, list) or not choices:
-        raise AgentProtocolError("Chat completion response does not contain choices.")
+    choices = _read_sequence_field(response, "choices")
+    if not choices:
+        error_payload = _read_field(response, "error")
+        if error_payload is not None:
+            error_message = _extract_error_message(error_payload)
+            raise AgentProtocolError(
+                f"Chat completion request failed before a choice was returned: {error_message}"
+            )
+        raise AgentProtocolError(
+            "Chat completion response does not contain choices."
+        )
     first_choice = choices[0]
-    message = getattr(first_choice, "message", None)
+    message = _read_field(first_choice, "message")
     if message is None:
         raise AgentProtocolError("Chat completion choice does not contain a message.")
     return message
 
 
 def _extract_message_content(message: object) -> str:
-    content = getattr(message, "content", "")
+    content = _read_field(message, "content")
     if isinstance(content, str):
         return content
     if content is None:
         return ""
+    if isinstance(content, list):
+        text_chunks = [_extract_content_part_text(part) for part in content]
+        return "".join(chunk for chunk in text_chunks if chunk)
     raise AgentProtocolError(f"Unsupported assistant content type: {type(content)!r}")
 
 
 def _extract_tool_calls(message: object) -> tuple[AgentToolCall, ...]:
-    raw_tool_calls = getattr(message, "tool_calls", None)
+    raw_tool_calls = _read_field(message, "tool_calls")
     if raw_tool_calls is None:
         return tuple()
-    if not isinstance(raw_tool_calls, list):
+    if not isinstance(raw_tool_calls, (list, tuple)):
         raise AgentProtocolError("Assistant tool_calls payload must be a list.")
 
     calls: list[AgentToolCall] = []
     for raw_tool_call in raw_tool_calls:
-        tool_call_id = getattr(raw_tool_call, "id", None)
+        tool_call_id = _read_field(raw_tool_call, "id")
         if not isinstance(tool_call_id, str) or not tool_call_id:
             raise AgentProtocolError("Tool call is missing a valid id.")
 
-        function_payload = getattr(raw_tool_call, "function", None)
+        function_payload = _read_field(raw_tool_call, "function")
         if function_payload is None:
             raise AgentProtocolError("Tool call is missing its function payload.")
 
-        tool_name = getattr(function_payload, "name", None)
+        tool_name = _read_field(function_payload, "name")
         if not isinstance(tool_name, str) or not tool_name:
             raise AgentProtocolError("Tool call is missing a valid function name.")
 
-        arguments_json = getattr(function_payload, "arguments", None)
+        arguments_json = _read_field(function_payload, "arguments")
         if not isinstance(arguments_json, str):
             raise AgentProtocolError("Tool call arguments must be a JSON string.")
 
@@ -280,8 +323,26 @@ def _extract_tool_calls(message: object) -> tuple[AgentToolCall, ...]:
     return tuple(calls)
 
 
+def _extract_final_answer(arguments_json: str) -> str:
+    try:
+        payload = json.loads(arguments_json)
+    except json.JSONDecodeError as exc:
+        raise AgentProtocolError("final_answer arguments must be valid JSON.") from exc
+    if not isinstance(payload, dict):
+        raise AgentProtocolError("final_answer arguments must decode to a JSON object.")
+
+    answer = payload.get("answer")
+    if not isinstance(answer, str):
+        raise AgentProtocolError("final_answer requires a string `answer` field.")
+
+    normalized_answer = answer.strip()
+    if not normalized_answer:
+        raise AgentProtocolError("final_answer requires a non-empty `answer`.")
+    return normalized_answer
+
+
 def _extract_step_metrics(response: object, *, api_duration_ms: float) -> AgentStepMetrics:
-    usage = getattr(response, "usage", None)
+    usage = _read_field(response, "usage")
     prompt_tokens = _read_int_field(usage, "prompt_tokens")
     completion_tokens = _read_int_field(usage, "completion_tokens")
     total_tokens = _read_int_field(usage, "total_tokens")
@@ -323,6 +384,33 @@ def _read_field(value: object, key: str) -> object:
     return getattr(value, key, None)
 
 
+def _read_sequence_field(value: object, key: str) -> tuple[object, ...]:
+    raw_value = _read_field(value, key)
+    if isinstance(raw_value, (list, tuple)):
+        return tuple(raw_value)
+    return tuple()
+
+
+def _extract_error_message(error_payload: object) -> str:
+    message = _read_field(error_payload, "message")
+    if isinstance(message, str) and message.strip():
+        return message
+    return str(error_payload)
+
+
+def _extract_content_part_text(part: object) -> str:
+    if isinstance(part, str):
+        return part
+    text = _read_field(part, "text")
+    if isinstance(text, str):
+        return text
+    if text is not None:
+        nested_text = _read_field(text, "value")
+        if isinstance(nested_text, str):
+            return nested_text
+    return ""
+
+
 def _merge_usage(summary: AgentUsageSummary, metrics: AgentStepMetrics) -> AgentUsageSummary:
     return AgentUsageSummary(
         prompt_tokens=summary.prompt_tokens + metrics.prompt_tokens,
@@ -334,3 +422,12 @@ def _merge_usage(summary: AgentUsageSummary, metrics: AgentStepMetrics) -> Agent
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _build_step_budget_warning(remaining_steps: int) -> str:
+    noun = "step" if remaining_steps == 1 else "steps"
+    return (
+        f"You have only {remaining_steps} {noun} remaining before this run is "
+        "counted as a failure. If you have enough evidence, stop now and call "
+        "`final_answer`. Do not do redundant checks or extra calculations."
+    )

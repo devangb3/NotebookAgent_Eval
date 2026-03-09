@@ -1,0 +1,9 @@
+{
+  "task_id": "task_10_q01",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_10/data",
+  "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
+  "question": "For shipments over 20 kg, which carrier was most reliable against its promised delivery timing?",
+  "ground_truth": "CR1",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

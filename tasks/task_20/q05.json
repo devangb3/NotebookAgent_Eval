@@ -1,0 +1,9 @@
+{
+  "task_id": "task_20_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_20/data",
+  "problem_statement": "Farm Fields, Plantings, Weather, Harvests, and Pests. An agronomy team wants to compare crop productivity, timing, irrigation exposure, and pest pressure across fields.",
+  "question": "What share of fields were both harvested late and below the median yield for their crop, rounded to 1 decimal place?",
+  "ground_truth": "25.0%",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

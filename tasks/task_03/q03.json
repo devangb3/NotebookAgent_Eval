@@ -1,0 +1,9 @@
+{
+  "task_id": "task_03_q03",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_03/data",
+  "problem_statement": "Hospital Admissions, Labs, and Medications. A hospital quality team wants to analyze readmissions, abnormal labs, medication exposure, and inpatient resource use.",
+  "question": "Among admissions with at least one sodium result below 135, what percentage had medication code M03 starting on or before the date of their first below-135 sodium result? Treat med start_day as days after admit_date, and round to 1 decimal place.",
+  "ground_truth": "35.7%",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

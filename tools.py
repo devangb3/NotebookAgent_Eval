@@ -160,6 +160,24 @@ class NotebookToolExecutor:
                     },
                 },
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "final_answer",
+                    "description": "Submit the final answer and terminate the run immediately.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "answer": {
+                                "type": "string",
+                                "description": "The exact final answer for the task.",
+                            },
+                        },
+                        "required": ["answer"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
         ]
 
     def get_cell(self, index: int) -> str:

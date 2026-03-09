@@ -1,0 +1,9 @@
+{
+  "task_id": "task_11_q04",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_11/data",
+  "problem_statement": "Smart Meter Energy Usage with Tariffs and Outages. A utility analyst wants to understand high-load behavior, tariff exposure, and the local impact of outages on demand.",
+  "question": "Among meters with at least 2 outage events, compare average kwh during outage-window hours against average kwh during the same clock hours on non-outage dates for that meter. Which meter_id has the largest drop? If there is a tie, use the smallest meter_id.",
+  "ground_truth": "MTR05",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

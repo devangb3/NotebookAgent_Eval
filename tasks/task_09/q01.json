@@ -1,0 +1,9 @@
+{
+  "task_id": "task_09_q01",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_09/data",
+  "problem_statement": "Marketing Campaigns, Sessions, Spend, and Orders. A growth team wants to analyze campaign efficiency, bounce behavior, and multi-channel paths before purchase.",
+  "question": "Using revenue attributed only to orders linked to sessions in this dataset, which channel has the highest return on ad spend?",
+  "ground_truth": "display",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

@@ -53,16 +53,30 @@ source .venv/bin/activate
 python main.py tasks/a.json tasks/b.json tasks/c.json
 ```
 
+**Options:**
+- `--max-workers N`: Number of tasks to run in parallel (default: 4)
+- `--max-steps N`: Maximum agent steps per task (default: 20)
+
+```bash
+# Custom parallelism and steps
+python main.py tasks/ --max-workers 8 --max-steps 30
+
+# Sequential (single worker)
+python main.py tasks/ --max-workers 1
+```
+
 Each run creates a Harbor-style artifact folder under `jobs/` using the pattern `agent_{model_name}_{timestamp}`. The top-level artifact structure is preserved:
 
 - `notebook.ipynb`: final notebook state from the last executed task
 - `transcript.txt`: full model/tool transcript across all tasks
 - `config.json`: run configuration and resolved task definitions
 - `result.json`: run metadata, token usage, timings, task answers, and ground truths
-- `agent/trajectory.json`: structured step-by-step trace across the run
 - `runtime.log`: execution logs
+- `exception.txt`: exception details if the run failed with an uncaught error, otherwise empty
 
-Additional per-task notebooks are stored under `tasks/<task_stage>/notebook.ipynb` inside the same run directory.
+Per-task artifacts (notebook and trajectory) are stored under `tasks/<task_stage>/` inside the same run directory:
+- `tasks/<task_stage>/notebook.ipynb`: notebook state for that task
+- `tasks/<task_stage>/trajectory.json`: structured step-by-step trace for that task
 
 ## Test
 
