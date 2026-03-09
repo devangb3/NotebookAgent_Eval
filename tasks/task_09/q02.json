@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_09/data",
   "problem_statement": "Marketing Campaigns, Sessions, Spend, and Orders. A growth team wants to analyze campaign efficiency, bounce behavior, and multi-channel paths before purchase.",
-  "question": "Within search traffic, what is the earliest session_date on which bounce rate reaches its peak, where a bounce is pages_viewed = 1?",
-  "ground_truth": "2024-03-04",
+  "question": "For each user who placed at least one order, compute that user's total order revenue. Attribute each user's entire revenue to the channel of their chronologically first session (first-touch attribution). Which first-touch channel has the highest total attributed revenue? Report the channel name.",
+  "ground_truth": "display",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }
