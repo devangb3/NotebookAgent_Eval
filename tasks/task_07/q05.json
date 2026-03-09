@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_07/data",
   "problem_statement": "Flights and Airport Weather. An airline operations team wants to analyze delay patterns, route performance, and weather-linked disruptions.",
-  "question": "On non-cancelled flights whose origin airport had rain_mm >= 5, which origin airport_code has the highest average departure delay?",
+  "question": "On non-cancelled flights whose origin airport had more than 5 mm rainfall, which origin airport_code has the highest average departure delay?",
   "ground_truth": "AAA",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

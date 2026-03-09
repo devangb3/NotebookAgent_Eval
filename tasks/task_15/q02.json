@@ -1,9 +1,0 @@
-{
-  "task_id": "task_15_q02",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_15/data",
-  "problem_statement": "Marketplace Listings, Orders, Reviews, and Refunds. A marketplace analytics team wants to understand seller efficiency, refund behavior, and category quality signals.",
-  "question": "Which category has the lowest average review rating?",
-  "ground_truth": "Apparel",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

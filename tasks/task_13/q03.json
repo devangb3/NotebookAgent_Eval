@@ -1,9 +1,0 @@
-{
-  "task_id": "task_13_q03",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_13/data",
-  "problem_statement": "Restaurant Reservations, Tables, and Checks. A restaurant manager wants to analyze no-shows, seating delays, table fit, and revenue by service patterns.",
-  "question": "Which day of the week has the highest average check per cover, where check per cover = (food_total + drink_total) / party_size?",
-  "ground_truth": "Friday",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

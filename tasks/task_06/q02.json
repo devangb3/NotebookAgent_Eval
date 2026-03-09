@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_06/data",
   "problem_statement": "SaaS Accounts, Plans, Invoices, and Tickets. A B2B SaaS finance and support team wants to analyze cash collection, upgrades, ticket load, and account efficiency.",
-  "question": "In Q2 2024 (April through June), which segment has the highest average support ticket count per active account?",
+  "question": "In Q2 2024, which segment has the highest average support ticket count per active account?",
   "ground_truth": "SMB",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

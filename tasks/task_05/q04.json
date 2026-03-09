@@ -1,9 +1,0 @@
-{
-  "task_id": "task_05_q04",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_05/data",
-  "problem_statement": "Streaming Views, Catalog, and Subscriptions. A streaming platform wants to analyze engagement, completion, binge behavior, and viewing patterns tied to subscriber outcomes.",
-  "question": "Considering only users whose sub_end is before 2024-03-31, which title_id has the highest total watch_min?",
-  "ground_truth": "T07",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

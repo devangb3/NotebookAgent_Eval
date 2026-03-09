@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_18/data",
   "problem_statement": "Library Members, Books, Loans, and Fines. A public library wants to study overdue behavior, fine concentration, and circulation intensity by branch and genre.",
-  "question": "Among members with at least 3 loans, which member_id has the highest average days_overdue?",
+  "question": "Among members with at least 3 loans, which member_id has the highest average overdue days?",
   "ground_truth": "M12",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_10/data",
   "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
-  "question": "Which dest_depot has the largest average delay_days, where delay_days = (floor(delivered_time to calendar date) - ship_date) - promised_days?",
+  "question": "Which destination depot has the largest average delay days?",
   "ground_truth": "D02",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

@@ -1,9 +1,0 @@
-{
-  "task_id": "task_11_q05",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_11/data",
-  "problem_statement": "Smart Meter Energy Usage with Tariffs and Outages. A utility analyst wants to understand high-load behavior, tariff exposure, and the local impact of outages on demand.",
-  "question": "Which household_type has the higher load factor, defined as mean aggregate hourly kwh divided by max aggregate hourly kwh over the full period?",
-  "ground_truth": "apartment",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

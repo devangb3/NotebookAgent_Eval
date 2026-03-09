@@ -1,9 +1,0 @@
-{
-  "task_id": "task_05_q01",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_05/data",
-  "problem_statement": "Streaming Views, Catalog, and Subscriptions. A streaming platform wants to analyze engagement, completion, binge behavior, and viewing patterns tied to subscriber outcomes.",
-  "question": "Among premium users, which genre has the highest average completion rate, where completion rate = watch_min / runtime_min?",
-  "ground_truth": "Comedy",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

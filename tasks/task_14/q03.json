@@ -1,9 +1,0 @@
-{
-  "task_id": "task_14_q03",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_14/data",
-  "problem_statement": "Insurance Policies, Claims, and Payments. An insurance analyst wants to study settlement timing, payout ratios, claim clustering, and paid loss by product and month.",
-  "question": "How many policyholders had multiple claims with loss_date values within 30 days of each other?",
-  "ground_truth": "10",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

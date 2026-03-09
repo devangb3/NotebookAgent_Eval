@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_14/data",
   "problem_statement": "Insurance Policies, Claims, and Payments. An insurance analyst wants to study settlement timing, payout ratios, claim clustering, and paid loss by product and month.",
-  "question": "For claims caused by Collision, what is the median payout ratio paid_total / claim_amount, rounded to 3 decimals?",
+  "question": "For claims caused by Collision, what is the median payout ratio, rounded to 3 decimals?",
   "ground_truth": "0.756",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

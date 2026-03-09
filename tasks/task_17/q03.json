@@ -1,9 +1,0 @@
-{
-  "task_id": "task_17_q03",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_17/data",
-  "problem_statement": "Short-Term Rental Hosts, Listings, Bookings, and Reviews. A rental marketplace wants to analyze host occupancy, neighborhood revenue concentration, cancellations, and booking design choices.",
-  "question": "What percentage of all bookings were canceled within 48 hours of checkin_date, rounded to 1 decimal place?",
-  "ground_truth": "6.9%",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

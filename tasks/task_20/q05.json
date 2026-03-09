@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_20/data",
   "problem_statement": "Farm Fields, Plantings, Weather, Harvests, and Pests. An agronomy team wants to compare crop productivity, timing, irrigation exposure, and pest pressure across fields.",
-  "question": "What percentage of fields were harvested after target_harvest_date and also had yield per hectare below the median yield per hectare of their crop, rounded to 1 decimal place?",
+  "question": "What percentage of fields were harvested after targeted date and also had yield per hectare below the median yield per hectare of their crop, rounded to 1 decimal place?",
   "ground_truth": "25.0%",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

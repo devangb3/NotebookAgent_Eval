@@ -1,9 +1,0 @@
-{
-  "task_id": "task_04_q03",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_04/data",
-  "problem_statement": "Manufacturing Batches, QC, and Maintenance. A factory operations analyst needs to connect maintenance timing to quality, runtime, and energy efficiency.",
-  "question": "Which batch_id has the highest energy_kwh per good unit, where good units = units_produced - defect_units?",
-  "ground_truth": "B024",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

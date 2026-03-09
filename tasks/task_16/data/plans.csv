@@ -1,4 +1,0 @@
-plan_id,plan_name,monthly_fee,included_minutes,included_gb,included_texts
-P1,Lite,30,300,5,500
-P2,Plus,55,700,20,2000
-P3,Max,80,1200,50,5000

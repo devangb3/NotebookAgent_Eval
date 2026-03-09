@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_15/data",
   "problem_statement": "Marketplace Listings, Orders, Reviews, and Refunds. A marketplace analytics team wants to understand seller efficiency, refund behavior, and category quality signals.",
-  "question": "Which seller_id has the highest net revenue per active listing, where net revenue = pricequantity - refund_amount and active listings are listings with at least one order?",
+  "question": "Which seller_id has the highest net revenue per listings with at least one order?",
   "ground_truth": "SEL08",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

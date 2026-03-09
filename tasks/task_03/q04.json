@@ -1,9 +1,0 @@
-{
-  "task_id": "task_03_q04",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_03/data",
-  "problem_statement": "Hospital Admissions, Labs, and Medications. A hospital quality team wants to analyze readmissions, abnormal labs, medication exposure, and inpatient resource use.",
-  "question": "Which ward has the most total inpatient-days?",
-  "ground_truth": "A",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

@@ -1,9 +1,0 @@
-{
-  "task_id": "task_11_q01",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_11/data",
-  "problem_statement": "Smart Meter Energy Usage with Tariffs and Outages. A utility analyst wants to understand high-load behavior, tariff exposure, and the local impact of outages on demand.",
-  "question": "Which meter_id has the highest average kwh during weekday evening peak hours 18:00 through 21:59?",
-  "ground_truth": "MTR08",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

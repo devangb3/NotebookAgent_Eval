@@ -1,9 +1,0 @@
-{
-  "task_id": "task_16_q02",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_16/data",
-  "problem_statement": "Telecom Customers, Monthly Usage, and Bills. A telecom operator wants to identify plan stress, high-overage customers, payment risk, and regional bill patterns.",
-  "question": "Which customer_id has the highest ratio of total weekend_data_gb to total weekday_data_gb over the full period?",
-  "ground_truth": "C12",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

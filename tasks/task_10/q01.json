@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_10/data",
   "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
-  "question": "Among shipments with weight_kg > 20, which carrier has the highest on-time delivery rate, where on-time means floor(delivered_time to calendar date) - ship_date <= promised_days?",
+  "question": "For shipments weghing more than 20 kgs, which carrier has the highest on-time delivery rate?",
   "ground_truth": "CR1",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

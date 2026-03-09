@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_13/data",
   "problem_statement": "Restaurant Reservations, Tables, and Checks. A restaurant manager wants to analyze no-shows, seating delays, table fit, and revenue by service patterns.",
-  "question": "For walk-in reservations that were seated, what is the median waiting time in minutes from reservation_time to seated_time?",
+  "question": "For walk-in reservations that were seated, what is the median waiting time in minutes?",
   "ground_truth": "10",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

@@ -1,9 +1,0 @@
-{
-  "task_id": "task_12_q01",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_12/data",
-  "problem_statement": "Employees, Projects, Timesheets, Training, and Reviews. An HR and finance analyst wants to connect utilization, project mix, training completion, and review outcomes.",
-  "question": "Which employee_id has the highest billable-hours share, defined as hours on client_billable projects divided by total hours?",
-  "ground_truth": "E13",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

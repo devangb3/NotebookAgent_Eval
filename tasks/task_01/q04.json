@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_01/data",
   "problem_statement": "Retail Orders, Products, and Returns. A retailer wants to understand net sales after partial returns and how returns interact with products, channels, and customer behavior.",
-  "question": "Which product_id has the highest return rate by units returned divided by units sold?",
+  "question": "Which product_id has the highest return rate?",
   "ground_truth": "P02",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

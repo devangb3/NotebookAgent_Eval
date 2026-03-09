@@ -1,9 +1,0 @@
-{
-  "task_id": "task_16_q03",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_16/data",
-  "problem_statement": "Telecom Customers, Monthly Usage, and Bills. A telecom operator wants to identify plan stress, high-overage customers, payment risk, and regional bill patterns.",
-  "question": "What percentage of customers both exceeded included voice minutes in at least 2 months and paid late at least once, rounded to 1 decimal place?",
-  "ground_truth": "21.4%",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

@@ -1,9 +1,0 @@
-{
-  "task_id": "task_18_q04",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_18/data",
-  "problem_statement": "Library Members, Books, Loans, and Fines. A public library wants to study overdue behavior, fine concentration, and circulation intensity by branch and genre.",
-  "question": "Which return_date month has the highest total fine_amount?",
-  "ground_truth": "2024-02",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

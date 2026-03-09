@@ -1,9 +1,0 @@
-{
-  "task_id": "task_09_q05",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_09/data",
-  "problem_statement": "Marketing Campaigns, Sessions, Spend, and Orders. A growth team wants to analyze campaign efficiency, bounce behavior, and multi-channel paths before purchase.",
-  "question": "Which campaign_id has the highest revenue per non-bounce session, where non-bounce means pages_viewed > 1?",
-  "ground_truth": "C08",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

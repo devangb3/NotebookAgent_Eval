@@ -1,9 +1,0 @@
-{
-  "task_id": "task_07_q04",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_07/data",
-  "problem_statement": "Flights and Airport Weather. An airline operations team wants to analyze delay patterns, route performance, and weather-linked disruptions.",
-  "question": "Using only non-cancelled flights, which is the earliest flight_date among the date or dates with the highest total distance_miles flown?",
-  "ground_truth": "2024-07-03",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}
