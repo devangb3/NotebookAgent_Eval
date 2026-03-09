@@ -594,9 +594,10 @@ def test_build_task_prompt_references_source_path_and_contract(tmp_path: Path) -
         agent_instructions="Keep the answer short.",
     )
 
-    prompt = build_task_prompt(task, data_root=data_root)
+    prompt = build_task_prompt(task, data_root=data_root, max_steps=20)
 
     assert "Starting from a blank notebook" in prompt
+    assert "You have at most 20 steps to complete this task." in prompt
     assert "Data Source: csv" in prompt
     assert str(source_path.resolve()) in prompt
     assert "Problem Statement: Understand the dataset." in prompt

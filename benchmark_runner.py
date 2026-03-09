@@ -148,7 +148,11 @@ def _run_task(
 ) -> TaskExecutionRecord:
     task = task_file.task
     stage_name = task_stage_name(task)
-    task_prompt = build_task_prompt(task, data_root=config.data_root)
+    task_prompt = build_task_prompt(
+        task,
+        data_root=config.data_root,
+        max_steps=config.max_steps,
+    )
     task_notebook_path = config.run_dir / f"notebook_{task_index}.ipynb"
 
     bootstrap_notebook(task_notebook_path)

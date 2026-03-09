@@ -5,15 +5,16 @@ from pathlib import Path
 from task_loader import BenchmarkTask
 
 
-def build_task_prompt(task: BenchmarkTask, *, data_root: Path) -> str:
+def build_task_prompt(task: BenchmarkTask, *, data_root: Path, max_steps: int) -> str:
     resolved_data_source = task.resolved_data_source_path(data_root)
     instruction_block = ""
     if task.agent_instructions:
         instruction_block = f"Task-specific instructions:\n{task.agent_instructions.strip()}\n\n"
 
     return (
-        "Starting from a blank notebook, act as a data analyst who must use notebook code "
-        "execution before answering.\n\n"
+        "Starting from a blank notebook, act as a data analyst who must use python notebook code "
+        "execution before answering.\n"
+        f"You have at most {max_steps} steps to complete this task.\n\n"
         f"{instruction_block}"
         "Task Format:\n"
         f"1. Data Source: {task.data_source_type}\n"
