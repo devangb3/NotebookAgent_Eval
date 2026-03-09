@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_09/data",
   "problem_statement": "Marketing Campaigns, Sessions, Spend, and Orders. A growth team wants to analyze campaign efficiency, bounce behavior, and multi-channel paths before purchase.",
-  "question": "How many users had sessions from multiple channels before their first purchase?",
+  "question": "Among users who eventually bought, how many had used more than one channel in the lead-up to their first purchase?",
   "ground_truth": "10",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

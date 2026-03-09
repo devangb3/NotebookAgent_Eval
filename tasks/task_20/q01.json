@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_20/data",
   "problem_statement": "Farm Fields, Plantings, Weather, Harvests, and Pests. An agronomy team wants to compare crop productivity, timing, irrigation exposure, and pest pressure across fields.",
-  "question": "Which crop has the highest average yield per hectare?",
+  "question": "Which crop performs best on average yield per hectare?",
   "ground_truth": "Corn",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

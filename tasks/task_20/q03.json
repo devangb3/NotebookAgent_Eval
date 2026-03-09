@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_20/data",
   "problem_statement": "Farm Fields, Plantings, Weather, Harvests, and Pests. An agronomy team wants to compare crop productivity, timing, irrigation exposure, and pest pressure across fields.",
-  "question": "What is the total irrigation across Corn fields that were harvested after their targeted date?",
+  "question": "How much total irrigation went to Corn fields harvested after their target date?",
   "ground_truth": "167",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

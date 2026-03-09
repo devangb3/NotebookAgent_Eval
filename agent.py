@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import perf_counter
@@ -18,7 +19,8 @@ Rules:
 - If notebook execution fails, inspect the traceback, then repair the relevant cell and execute again.
 - Do not reload the dataset unless the task explicitly requires it.
 - Load all task data exclusively from the path provided in the task prompt;
-- When the task is complete, respond with a short plain-text summary and do not call more tools.
+- Once you have enough evidence to answer the task, call the `final_answer` tool with the exact answer.
+- Plain-text completion is allowed as a fallback, but `final_answer` is preferred.
 """
 
 
@@ -120,6 +122,7 @@ class NotebookReActAgent:
 
     def run(self, prompt: str, *, stage_name: str = "run") -> AgentRunResult:
         initial_state = format_notebook_state(self._tools.environment.get_state())
+        tool_schemas = self._tools.tool_schemas
         messages: list[dict[str, object]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -134,6 +137,14 @@ class NotebookReActAgent:
         usage_summary = AgentUsageSummary()
 
         for step in range(1, self._config.max_steps + 1):
+            remaining_steps = self._config.max_steps - step + 1
+            if remaining_steps <= 3:
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": _build_step_budget_warning(remaining_steps),
+                    }
+                )
             request_messages = tuple(
                 copy.deepcopy(cast(dict[str, object], message)) for message in messages
             )
@@ -142,7 +153,7 @@ class NotebookReActAgent:
             response = self._client.chat.completions.create(
                 model=self._config.model,
                 messages=messages,
-                tools=self._tools.tool_schemas,
+                tools=tool_schemas,
                 tool_choice="auto",
                 temperature=self._config.temperature,
             )
@@ -188,6 +199,28 @@ class NotebookReActAgent:
                     raise AgentProtocolError("Assistant returned neither tool calls nor final text.")
                 return AgentRunResult(
                     final_response=content,
+                    steps_used=step,
+                    usage=usage_summary,
+                    trace_steps=tuple(trace_steps),
+                )
+
+            final_answer_calls = [call for call in tool_calls if call.name == "final_answer"]
+            if final_answer_calls:
+                final_response = _extract_final_answer(final_answer_calls[0].arguments_json)
+                trace_steps.append(
+                    AgentTraceStep(
+                        step_id=step,
+                        stage=stage_name,
+                        timestamp=started_at,
+                        request_messages=request_messages,
+                        assistant_content=content,
+                        tool_calls=tool_calls,
+                        tool_results=tuple(),
+                        metrics=step_metrics,
+                    )
+                )
+                return AgentRunResult(
+                    final_response=final_response,
                     steps_used=step,
                     usage=usage_summary,
                     trace_steps=tuple(trace_steps),
@@ -280,6 +313,24 @@ def _extract_tool_calls(message: object) -> tuple[AgentToolCall, ...]:
     return tuple(calls)
 
 
+def _extract_final_answer(arguments_json: str) -> str:
+    try:
+        payload = json.loads(arguments_json)
+    except json.JSONDecodeError as exc:
+        raise AgentProtocolError("final_answer arguments must be valid JSON.") from exc
+    if not isinstance(payload, dict):
+        raise AgentProtocolError("final_answer arguments must decode to a JSON object.")
+
+    answer = payload.get("answer")
+    if not isinstance(answer, str):
+        raise AgentProtocolError("final_answer requires a string `answer` field.")
+
+    normalized_answer = answer.strip()
+    if not normalized_answer:
+        raise AgentProtocolError("final_answer requires a non-empty `answer`.")
+    return normalized_answer
+
+
 def _extract_step_metrics(response: object, *, api_duration_ms: float) -> AgentStepMetrics:
     usage = getattr(response, "usage", None)
     prompt_tokens = _read_int_field(usage, "prompt_tokens")
@@ -334,3 +385,12 @@ def _merge_usage(summary: AgentUsageSummary, metrics: AgentStepMetrics) -> Agent
 
 def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _build_step_budget_warning(remaining_steps: int) -> str:
+    noun = "step" if remaining_steps == 1 else "steps"
+    return (
+        f"You have only {remaining_steps} {noun} remaining before this run is "
+        "counted as a failure. If you have enough evidence, stop now and call "
+        "`final_answer`. Do not do redundant checks or extra calculations."
+    )

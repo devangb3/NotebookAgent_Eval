@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_04/data",
   "problem_statement": "Manufacturing Batches, QC, and Maintenance. A factory operations analyst needs to connect maintenance timing to quality, runtime, and energy efficiency.",
-  "question": "What is the scrap-adjusted yield for line B, expressed as a percentage rounded to 2 decimals?",
+  "question": "For line B, what was the effective yield after losses to both defects and rework, rounded to 2 decimals in percentage?",
   "ground_truth": "94.68%",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_15/data",
   "problem_statement": "Marketplace Listings, Orders, Reviews, and Refunds. A marketplace analytics team wants to understand seller efficiency, refund behavior, and category quality signals.",
-  "question": "Buyers from which region have the highest refund rate?",
+  "question": "Which buyer region has the highest refund rate?",
   "ground_truth": "South",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

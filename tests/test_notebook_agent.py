@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import dataclass
 from datetime import datetime
@@ -211,6 +212,185 @@ def test_agent_runs_tool_loop_with_mocked_client(tmp_path: Path) -> None:
         assert "Cell 1 output" in result.trace_steps[1].tool_results[0]
         snapshot = environment.get_state()
         assert snapshot.cells[1].outputs_summary.strip() == "12"
+
+
+def test_agent_prefers_final_answer_tool_for_termination(tmp_path: Path) -> None:
+    notebook_path = tmp_path / "agent-final-answer.ipynb"
+    _write_notebook(
+        notebook_path,
+        [
+            new_code_cell("value = 3"),
+        ],
+    )
+
+    responses = [
+        FakeResponse(
+            choices=[
+                FakeChoice(
+                    message=FakeMessage(
+                        content="",
+                        tool_calls=[
+                            FakeToolCall(
+                                id="call-add",
+                                function=FakeFunctionCall(
+                                    name="add_cell",
+                                    arguments='{"source":"print(value * 4)","cell_type":"code","position":1}',
+                                ),
+                            )
+                        ],
+                    )
+                )
+            ],
+            usage=FakeUsage(prompt_tokens=10, completion_tokens=4, total_tokens=14, cost=0.01),
+        ),
+        FakeResponse(
+            choices=[
+                FakeChoice(
+                    message=FakeMessage(
+                        content="",
+                        tool_calls=[
+                            FakeToolCall(
+                                id="call-exec",
+                                function=FakeFunctionCall(
+                                    name="execute_notebook",
+                                    arguments="{}",
+                                ),
+                            )
+                        ],
+                    )
+                )
+            ],
+            usage=FakeUsage(prompt_tokens=12, completion_tokens=5, total_tokens=17, cost=0.02),
+        ),
+        FakeResponse(
+            choices=[
+                FakeChoice(
+                    message=FakeMessage(
+                        content="I have enough evidence.",
+                        tool_calls=[
+                            FakeToolCall(
+                                id="call-final",
+                                function=FakeFunctionCall(
+                                    name="final_answer",
+                                    arguments='{"answer":"12"}',
+                                ),
+                            )
+                        ],
+                    )
+                )
+            ],
+            usage=FakeUsage(prompt_tokens=8, completion_tokens=3, total_tokens=11, cost=0.03),
+        ),
+    ]
+
+    with NotebookEnvironment(notebook_path) as environment:
+        client = FakeClient(responses=responses)
+        agent = NotebookReActAgent(
+            client=client,
+            tools=NotebookToolExecutor(environment),
+            config=AgentConfig(model="mock-model", max_steps=5),
+        )
+        result = agent.run("Multiply the seeded notebook value by four.")
+
+        assert result.final_response == "12"
+        assert result.steps_used == 3
+        assert len(result.trace_steps) == 3
+        assert result.trace_steps[2].tool_calls[0].name == "final_answer"
+        assert result.trace_steps[2].tool_results == tuple()
+        first_call_tools = client.chat.completions.calls[0]["tools"]
+        assert any(
+            tool["function"]["name"] == "final_answer"
+            for tool in first_call_tools
+        )
+
+
+def test_agent_warns_when_three_steps_from_budget(tmp_path: Path) -> None:
+    notebook_path = tmp_path / "agent-warning.ipynb"
+    _write_notebook(
+        notebook_path,
+        [
+            new_code_cell("value = 3"),
+        ],
+    )
+
+    responses = [
+        FakeResponse(
+            choices=[
+                FakeChoice(
+                    message=FakeMessage(
+                        content="",
+                        tool_calls=[
+                            FakeToolCall(
+                                id="call-add",
+                                function=FakeFunctionCall(
+                                    name="add_cell",
+                                    arguments='{"source":"print(value * 4)","cell_type":"code","position":1}',
+                                ),
+                            )
+                        ],
+                    )
+                )
+            ],
+            usage=FakeUsage(prompt_tokens=10, completion_tokens=4, total_tokens=14, cost=0.01),
+        ),
+        FakeResponse(
+            choices=[
+                FakeChoice(
+                    message=FakeMessage(
+                        content="",
+                        tool_calls=[
+                            FakeToolCall(
+                                id="call-exec",
+                                function=FakeFunctionCall(
+                                    name="execute_notebook",
+                                    arguments="{}",
+                                ),
+                            )
+                        ],
+                    )
+                )
+            ],
+            usage=FakeUsage(prompt_tokens=12, completion_tokens=5, total_tokens=17, cost=0.02),
+        ),
+        FakeResponse(
+            choices=[
+                FakeChoice(
+                    message=FakeMessage(
+                        content="Completed the task using the persistent notebook kernel.",
+                        tool_calls=[],
+                    )
+                )
+            ],
+            usage=FakeUsage(prompt_tokens=8, completion_tokens=3, total_tokens=11, cost=0.03),
+        ),
+    ]
+
+    with NotebookEnvironment(notebook_path) as environment:
+        client = FakeClient(responses=responses)
+        agent = NotebookReActAgent(
+            client=client,
+            tools=NotebookToolExecutor(environment),
+            config=AgentConfig(model="mock-model", max_steps=5),
+        )
+        result = agent.run("Multiply the seeded notebook value by four.")
+
+        assert "persistent notebook kernel" in result.final_response
+        warning_text = "You have only 3 steps remaining before this run is counted as a failure."
+        first_request_messages = client.chat.completions.calls[0]["messages"]
+        second_request_messages = client.chat.completions.calls[1]["messages"]
+        third_request_messages = client.chat.completions.calls[2]["messages"]
+        assert all(
+            warning_text not in str(message.get("content", ""))
+            for message in first_request_messages
+        )
+        assert all(
+            warning_text not in str(message.get("content", ""))
+            for message in second_request_messages
+        )
+        assert any(
+            warning_text in str(message.get("content", ""))
+            for message in third_request_messages
+        )
 
 
 def test_bootstrap_notebook_starts_empty(tmp_path: Path) -> None:
@@ -598,6 +778,7 @@ class FakeCompletions:
     def __init__(self, responses: list[FakeResponse]) -> None:
         self._responses = responses
         self._call_count = 0
+        self.calls: list[dict[str, object]] = []
 
     def create(
         self,
@@ -608,7 +789,15 @@ class FakeCompletions:
         tool_choice: str,
         temperature: float,
     ) -> FakeResponse:
-        del model, messages, tools, tool_choice, temperature
+        self.calls.append(
+            {
+                "model": model,
+                "messages": copy.deepcopy(messages),
+                "tools": copy.deepcopy(tools),
+                "tool_choice": tool_choice,
+                "temperature": temperature,
+            }
+        )
         if self._call_count >= len(self._responses):
             raise AssertionError("Mock client received more completion calls than expected.")
         response = self._responses[self._call_count]

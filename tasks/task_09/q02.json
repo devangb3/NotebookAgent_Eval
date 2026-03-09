@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_09/data",
   "problem_statement": "Marketing Campaigns, Sessions, Spend, and Orders. A growth team wants to analyze campaign efficiency, bounce behavior, and multi-channel paths before purchase.",
-  "question": "Among search-channel sessions, which is the earliest session_date with the highest bounce rate, where bounce means pages_viewed = 1?",
+  "question": "Within search traffic, what is the earliest session_date on which bounce rate reaches its peak, where a bounce is pages_viewed = 1?",
   "ground_truth": "2024-03-04",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }
