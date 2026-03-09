@@ -1,12 +1,6 @@
-local_notes/
-synthetic/
 __pycache__/
 .venv/
 .env
 *.egg-info/
 jobs/agent_*/
-raw_ip.json
-Task 1234 - Zomato Sessions
-node_modules/
-synthetic_benchmark.py
-test_synthetic_benchmark_assets.py
+temp/
