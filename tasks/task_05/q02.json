@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_05/data",
   "problem_statement": "Streaming Views, Catalog, and Subscriptions. A streaming platform wants to analyze engagement, completion, binge behavior, and viewing patterns tied to subscriber outcomes.",
-  "question": "For user U05, how many binge streaks last at least 3 straight calendar days with 2 or more view events every day?",
-  "ground_truth": "6",
+  "question": "For user U05, considering only qualifying view events that occurred while the subscription was active, were not in genre `Kids`, and fell in the 14-day window ending on `sub_end` (inclusive), how many binge streaks lasted at least 3 straight calendar days with 2 or more qualifying view events every day?",
+  "ground_truth": "1",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }

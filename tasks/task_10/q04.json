@@ -3,7 +3,7 @@
   "data_source_type": "table",
   "data_source_path": "tasks/task_10/data",
   "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
-  "question": "What percentage of shipments with exactly 2 scans between transit were delivered late, rounded to 1 decimal place?",
+  "question": "For each origin depot, find shipments heavier than that depot's median shipment weight. Among those above-depot-median-weight shipments across all depots, what percentage exceeded the promised delivery window? Round to 1 decimal place",
   "ground_truth": "50.0%",
   "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
 }
