@@ -1,9 +1,0 @@
-{
-  "task_id": "task_03_q05",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_03/data",
-  "problem_statement": "Hospital Admissions, Labs, and Medications. A hospital quality team wants to analyze readmissions, abnormal labs, medication exposure, and inpatient resource use.",
-  "question": "Which admission_id had the largest increase in creatinine from the first lab to the last lab within that admission? Break ties by the smallest admission_id.",
-  "ground_truth": "A001",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}

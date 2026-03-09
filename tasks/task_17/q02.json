@@ -1,9 +1,0 @@
-{
-  "task_id": "task_17_q02",
-  "data_source_type": "table",
-  "data_source_path": "tasks/task_17/data",
-  "problem_statement": "Short-Term Rental Hosts, Listings, Bookings, and Reviews. A rental marketplace wants to analyze host occupancy, neighborhood revenue concentration, cancellations, and booking design choices.",
-  "question": "Which neighborhood has the highest total realized revenue, where realized revenue for a completed booking is nightly_ratenights + cleaning_fee and canceled bookings contribute 0?",
-  "ground_truth": "Downtown",
-  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
-}
