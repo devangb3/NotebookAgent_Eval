@@ -16,6 +16,8 @@ from agent import (
     AgentMaxStepsExceeded,
     AgentProtocolError,
     AgentRunResult,
+    AgentStepMetrics,
+    AgentTraceStep,
     AgentUsageSummary,
     NotebookReActAgent,
 )
@@ -783,6 +785,94 @@ def test_run_benchmark_continues_after_max_steps_failure(tmp_path: Path, monkeyp
     assert by_task_id["T-001"]["final_response"].startswith("FAILED:")
     assert by_task_id["T-002"]["status"] == "completed"
     assert by_task_id["T-002"]["failure_type"] is None
+
+
+def test_failed_task_persists_partial_trajectory_on_max_steps(tmp_path: Path, monkeypatch: object) -> None:
+    data_root = tmp_path / "data"
+    data_root.mkdir()
+    (data_root / "dataset.csv").write_text("value\n1\n", encoding="utf-8")
+
+    task = BenchmarkTask(
+        task_id="T-001",
+        data_source_type="csv",
+        data_source_path="dataset.csv",
+        problem_statement="Context",
+        question="Question?",
+        ground_truth="Answer",
+    )
+    task_path = tmp_path / "task1.json"
+    task_path.write_text(json.dumps(_task_payload(task_id="T-001", data_source_path="dataset.csv")), encoding="utf-8")
+
+    config = AppConfig(
+        openrouter_api_key="test-key",
+        openrouter_model="google/gemini-test",
+        data_root=data_root,
+        task_files=(TaskFile(path=task_path, task=task),),
+        notebook_timeout_seconds=1234,
+        max_steps=20,
+        max_workers=1,
+        run_id="run-123",
+        run_dir=tmp_path / "jobs" / "agent_test",
+        notebook_path=tmp_path / "jobs" / "agent_test" / "notebook.ipynb",
+        transcript_path=tmp_path / "jobs" / "agent_test" / "transcript.txt",
+        config_path=tmp_path / "jobs" / "agent_test" / "config.json",
+        result_path=tmp_path / "jobs" / "agent_test" / "result.json",
+        log_path=tmp_path / "jobs" / "agent_test" / "runtime.log",
+        exception_path=tmp_path / "jobs" / "agent_test" / "exception.txt",
+        task_artifacts_dir=tmp_path / "jobs" / "agent_test" / "tasks",
+    )
+
+    class _FakeOpenAI:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            del args, kwargs
+
+    partial_result = AgentRunResult(
+        final_response="",
+        steps_used=20,
+        usage=AgentUsageSummary(prompt_tokens=10, completion_tokens=2, total_tokens=12, cost_usd=0.5),
+        trace_steps=(
+            AgentTraceStep(
+                step_id=1,
+                stage="task_T_001",
+                timestamp="2026-03-09T00:00:00Z",
+                request_messages=({"role": "user", "content": "Task"},),
+                assistant_content="working",
+                tool_calls=tuple(),
+                tool_results=tuple(),
+                metrics=AgentStepMetrics(prompt_tokens=10, completion_tokens=2, total_tokens=12, cost_usd=0.5, api_duration_ms=123.0),
+            ),
+        ),
+    )
+
+    def _fake_run_task(
+        *,
+        client: object,
+        config: AppConfig,
+        task_file: TaskFile,
+        task_index: int,
+        total_tasks: int,
+    ) -> TaskExecutionRecord:
+        del client, total_tasks
+        stage_name = task_stage_name(task_file.task)
+        task_notebook_path = config.run_dir / f"notebook_{task_index}.ipynb"
+        bootstrap_notebook(task_notebook_path)
+        raise AgentMaxStepsExceeded("Agent did not finish within 20 steps.", partial_result=partial_result)
+
+    monkeypatch.setattr(benchmark_runner, "OpenAI", _FakeOpenAI)
+    monkeypatch.setattr(benchmark_runner, "_run_task", _fake_run_task)
+
+    run_benchmark(config)
+
+    result_payload = json.loads(config.result_path.read_text(encoding="utf-8"))
+    task_result = result_payload["tasks"]["results"][0]
+    assert task_result["status"] == "failed"
+    assert task_result["steps_used"] == 20
+    assert task_result["usage"]["total_tokens"] == 12
+
+    trajectory_path = config.task_artifacts_dir / task_stage_name(task) / "trajectory.json"
+    trajectory_payload = json.loads(trajectory_path.read_text(encoding="utf-8"))
+    assert len(trajectory_payload["steps"]) == 1
+    assert trajectory_payload["steps"][0]["metrics"]["total_tokens"] == 12
 
 
 def test_run_benchmark_continues_after_agent_protocol_failure(tmp_path: Path, monkeypatch: object) -> None:

@@ -1,0 +1,9 @@
+{
+  "task_id": "task_19_q01",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_19/data",
+  "problem_statement": "Soccer Matches, Events, Players, and Attendance. A sports analyst wants to derive standings, halftime dynamics, goal concentration, and venue scoring patterns from event data.",
+  "question": "Using only goals scored in the first half, recompute match outcomes and league standings with standard 3-1-0 points. Which team_id finishes top? Break ties by goal difference , then by total goals scored, then alphabetically by team_id.",
+  "ground_truth": "TA",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

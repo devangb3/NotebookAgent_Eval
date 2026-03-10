@@ -1,0 +1,13 @@
+user_id,signup_date,plan
+U01,2024-01-03,trial
+U02,2024-01-05,trial
+U03,2024-01-07,trial
+U04,2024-01-09,trial
+U05,2024-01-11,basic
+U06,2024-01-13,basic
+U07,2024-01-15,basic
+U08,2024-01-17,basic
+U09,2024-01-19,premium
+U10,2024-01-21,premium
+U11,2024-01-23,premium
+U12,2024-01-25,premium

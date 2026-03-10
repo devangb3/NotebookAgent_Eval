@@ -77,6 +77,10 @@ class AgentRunResult:
 class AgentError(RuntimeError):
     """Base exception for agent failures."""
 
+    def __init__(self, message: str, *, partial_result: AgentRunResult | None = None) -> None:
+        super().__init__(message)
+        self.partial_result = partial_result
+
 
 class AgentProtocolError(AgentError):
     """Raised when the model returns an invalid response shape."""
@@ -134,54 +138,110 @@ class NotebookReActAgent:
         ]
         trace_steps: list[AgentTraceStep] = []
         usage_summary = AgentUsageSummary()
-
-        for step in range(1, self._config.max_steps + 1):
-            remaining_steps = self._config.max_steps - step + 1
-            if remaining_steps <= 3:
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": _build_step_budget_warning(remaining_steps),
-                    }
+        try:
+            for step in range(1, self._config.max_steps + 1):
+                remaining_steps = self._config.max_steps - step + 1
+                if remaining_steps <= 3:
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": _build_step_budget_warning(remaining_steps),
+                        }
+                    )
+                request_messages = tuple(
+                    copy.deepcopy(cast(dict[str, object], message)) for message in messages
                 )
-            request_messages = tuple(
-                copy.deepcopy(cast(dict[str, object], message)) for message in messages
-            )
-            started_at = _utc_now()
-            started_perf = perf_counter()
-            response = self._client.chat.completions.create(
-                model=self._config.model,
-                messages=messages,
-                tools=tool_schemas,
-                tool_choice="auto",
-                temperature=self._config.temperature,
-            )
-            api_duration_ms = (perf_counter() - started_perf) * 1000.0
-            message = _extract_response_message(response)
-            content = _extract_message_content(message)
-            tool_calls = _extract_tool_calls(message)
-            step_metrics = _extract_step_metrics(response, api_duration_ms=api_duration_ms)
+                started_at = _utc_now()
+                started_perf = perf_counter()
+                response = self._client.chat.completions.create(
+                    model=self._config.model,
+                    messages=messages,
+                    tools=tool_schemas,
+                    tool_choice="auto",
+                    temperature=self._config.temperature,
+                )
+                api_duration_ms = (perf_counter() - started_perf) * 1000.0
+                message = _extract_response_message(response)
+                content = _extract_message_content(message)
+                tool_calls = _extract_tool_calls(message)
+                step_metrics = _extract_step_metrics(response, api_duration_ms=api_duration_ms)
 
-            assistant_payload: dict[str, object] = {"role": "assistant"}
-            if content:
-                assistant_payload["content"] = content
-            if tool_calls:
-                assistant_payload["tool_calls"] = [
-                    {
-                        "id": call.tool_call_id,
-                        "type": "function",
-                        "function": {
-                            "name": call.name,
-                            "arguments": call.arguments_json,
-                        },
-                    }
-                    for call in tool_calls
-                ]
-            messages.append(assistant_payload)
-            tool_results: list[str] = []
-            usage_summary = _merge_usage(usage_summary, step_metrics)
+                assistant_payload: dict[str, object] = {"role": "assistant"}
+                if content:
+                    assistant_payload["content"] = content
+                if tool_calls:
+                    assistant_payload["tool_calls"] = [
+                        {
+                            "id": call.tool_call_id,
+                            "type": "function",
+                            "function": {
+                                "name": call.name,
+                                "arguments": call.arguments_json,
+                            },
+                        }
+                        for call in tool_calls
+                    ]
+                messages.append(assistant_payload)
+                tool_results: list[str] = []
+                usage_summary = _merge_usage(usage_summary, step_metrics)
 
-            if not tool_calls:
+                if not tool_calls:
+                    trace_steps.append(
+                        AgentTraceStep(
+                            step_id=step,
+                            stage=stage_name,
+                            timestamp=started_at,
+                            request_messages=request_messages,
+                            assistant_content=content,
+                            tool_calls=tool_calls,
+                            tool_results=tuple(),
+                            metrics=step_metrics,
+                        )
+                    )
+                    if not content:
+                        raise AgentProtocolError("Assistant returned neither tool calls nor final text.")
+                    return AgentRunResult(
+                        final_response=content,
+                        steps_used=step,
+                        usage=usage_summary,
+                        trace_steps=tuple(trace_steps),
+                    )
+
+                final_answer_calls = [call for call in tool_calls if call.name == "final_answer"]
+                if final_answer_calls:
+                    final_response = _extract_final_answer(final_answer_calls[0].arguments_json)
+                    trace_steps.append(
+                        AgentTraceStep(
+                            step_id=step,
+                            stage=stage_name,
+                            timestamp=started_at,
+                            request_messages=request_messages,
+                            assistant_content=content,
+                            tool_calls=tool_calls,
+                            tool_results=tuple(),
+                            metrics=step_metrics,
+                        )
+                    )
+                    return AgentRunResult(
+                        final_response=final_response,
+                        steps_used=step,
+                        usage=usage_summary,
+                        trace_steps=tuple(trace_steps),
+                    )
+
+                for tool_call in tool_calls:
+                    tool_result = self._tools.dispatch(
+                        tool_name=tool_call.name,
+                        raw_arguments=tool_call.arguments_json,
+                    )
+                    tool_results.append(tool_result)
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.tool_call_id,
+                            "content": tool_result,
+                        }
+                    )
                 trace_steps.append(
                     AgentTraceStep(
                         step_id=step,
@@ -190,70 +250,29 @@ class NotebookReActAgent:
                         request_messages=request_messages,
                         assistant_content=content,
                         tool_calls=tool_calls,
-                        tool_results=tuple(),
+                        tool_results=tuple(tool_results),
                         metrics=step_metrics,
                     )
                 )
-                if not content:
-                    raise AgentProtocolError("Assistant returned neither tool calls nor final text.")
-                return AgentRunResult(
-                    final_response=content,
-                    steps_used=step,
+
+            raise AgentMaxStepsExceeded(
+                f"Agent did not finish within {self._config.max_steps} steps.",
+                partial_result=AgentRunResult(
+                    final_response="",
+                    steps_used=self._config.max_steps,
                     usage=usage_summary,
                     trace_steps=tuple(trace_steps),
-                )
-
-            final_answer_calls = [call for call in tool_calls if call.name == "final_answer"]
-            if final_answer_calls:
-                final_response = _extract_final_answer(final_answer_calls[0].arguments_json)
-                trace_steps.append(
-                    AgentTraceStep(
-                        step_id=step,
-                        stage=stage_name,
-                        timestamp=started_at,
-                        request_messages=request_messages,
-                        assistant_content=content,
-                        tool_calls=tool_calls,
-                        tool_results=tuple(),
-                        metrics=step_metrics,
-                    )
-                )
-                return AgentRunResult(
-                    final_response=final_response,
-                    steps_used=step,
-                    usage=usage_summary,
-                    trace_steps=tuple(trace_steps),
-                )
-
-            for tool_call in tool_calls:
-                tool_result = self._tools.dispatch(
-                    tool_name=tool_call.name,
-                    raw_arguments=tool_call.arguments_json,
-                )
-                tool_results.append(tool_result)
-                messages.append(
-                    {
-                        "role": "tool",
-                        "tool_call_id": tool_call.tool_call_id,
-                        "content": tool_result,
-                    }
-                )
-            trace_steps.append(
-                AgentTraceStep(
-                    step_id=step,
-                    stage=stage_name,
-                    timestamp=started_at,
-                    request_messages=request_messages,
-                    assistant_content=content,
-                    tool_calls=tool_calls,
-                    tool_results=tuple(tool_results),
-                    metrics=step_metrics,
-                )
+                ),
             )
-
-        raise AgentMaxStepsExceeded(
-            f"Agent did not finish within {self._config.max_steps} steps."
-        )
+        except AgentError as exc:
+            if exc.partial_result is None:
+                exc.partial_result = AgentRunResult(
+                    final_response="",
+                    steps_used=len(trace_steps),
+                    usage=usage_summary,
+                    trace_steps=tuple(trace_steps),
+                )
+            raise
 
 
 def _extract_response_message(response: object) -> object:

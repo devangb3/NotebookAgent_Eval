@@ -1,0 +1,9 @@
+campaign_id,channel,region
+C01,search,US
+C02,social,US
+C03,email,EU
+C04,display,EU
+C05,search,APAC
+C06,social,APAC
+C07,email,US
+C08,display,EU

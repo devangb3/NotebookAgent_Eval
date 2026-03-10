@@ -1,0 +1,754 @@
+{
+  "id": "9b5a9873-b486-41d9-8219-7a68d7f5a195",
+  "trial_name": "gemini_failures_20260309_235138",
+  "trial_uri": "file:///home/devang/Projects/PilotCrew/Data-Science-Bench/jobs/gemini_failures_20260309_235138",
+  "config": {
+    "trial_name": "gemini_failures_20260309_235138",
+    "trials_dir": "jobs",
+    "job_id": "9b5a9873-b486-41d9-8219-7a68d7f5a195",
+    "agent": {
+      "provider": "openrouter",
+      "model_name": "google/gemini-3.1-pro-preview",
+      "task_max_steps": 20,
+      "temperature": 0.0
+    },
+    "tasks": {
+      "count": 12,
+      "task_files": [
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_01/q02.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_03/q03.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_05/q05.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_06/q03.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_06/q04.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_09/q04.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_10/q02.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_10/q04.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_13/q02.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_14/q02.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_19/q01.json",
+        "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_20/q05.json"
+      ],
+      "data_source_types": {
+        "csv": 0,
+        "images": 0,
+        "table": 12,
+        "text": 0
+      },
+      "definitions": [
+        {
+          "task_id": "task_01_q02",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_01/data",
+          "problem_statement": "Retail Orders, Products, and Returns. A retailer wants to understand net sales after partial returns and how returns interact with products, channels, and customer behavior.",
+          "question": "Return chargebacks reduce revenue on the day the return is processed. Compute daily net revenue and report the date with the largest day-over-day increase.",
+          "ground_truth": "2024-01-15",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_03_q03",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_03/data",
+          "problem_statement": "Hospital Admissions, Labs, and Medications. A hospital quality team wants to analyze readmissions, abnormal labs, medication exposure, and inpatient resource use.",
+          "question": "Among admissions with at least one sodium result below 135, what percentage had medication code M03 starting on or before the date of their first below-135 sodium result? Treat med start_day as days after admit_date, and round to 1 decimal place.",
+          "ground_truth": "35.7%",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_05_q05",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_05/data",
+          "problem_statement": "Streaming Views, Catalog, and Subscriptions. A streaming platform wants to analyze engagement, completion, binge behavior, and viewing patterns tied to subscriber outcomes.",
+          "question": "Focus only on view events that occurred while the user's subscription was active and within the final 7 days before sub_end. For each date, compute Documentary watch time as a share of total watch time from those events. Restrict to dates with at least 50 total watch minutes in this pre-end window. On which date was the Documentary share highest? If there is a tie, use the earliest date.",
+          "ground_truth": "2024-03-28",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_06_q03",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_06/data",
+          "problem_statement": "SaaS Accounts, Plans, Invoices, and Tickets. A B2B SaaS finance and support team wants to analyze cash collection, upgrades, ticket load, and account efficiency.",
+          "question": "How many accounts upgraded their plan tier at least once and also never paid an invoice late?",
+          "ground_truth": "2",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_06_q04",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_06/data",
+          "problem_statement": "SaaS Accounts, Plans, Invoices, and Tickets. A B2B SaaS finance and support team wants to analyze cash collection, upgrades, ticket load, and account efficiency.",
+          "question": "What is the difference between the mean net invoice amount for upgraded accounts and the mean net invoice amount for never-upgraded accounts, rounded to 2 decimals?",
+          "ground_truth": "-280.50",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_09_q04",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_09/data",
+          "problem_statement": "Marketing Campaigns, Sessions, Spend, and Orders. A growth team wants to analyze campaign efficiency, bounce behavior, and multi-channel paths before purchase.",
+          "question": "Among users who eventually bought, how many had used more than one channel in the lead-up to their first purchase?",
+          "ground_truth": "10",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_10_q02",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_10/data",
+          "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
+          "question": "For shipments originating from South-region depots, what is the median time from pickup to first hub receipt, measured in hours?",
+          "ground_truth": "12.5",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_10_q04",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_10/data",
+          "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
+          "question": "For each origin depot, find shipments heavier than that depot's median shipment weight. Among those above-depot-median-weight shipments across all depots, what percentage exceeded the promised delivery window? Round to 1 decimal place",
+          "ground_truth": "50.0%",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_13_q02",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_13/data",
+          "problem_statement": "Restaurant Reservations, Tables, and Checks. A restaurant manager wants to analyze no-shows, seating delays, table fit, and revenue by service patterns.",
+          "question": "Among walk-ins that were seated on Friday through Sunday at 19:00 or later, compute revenue per occupied seat-minute, where revenue is food_total + drink_total and occupied seat-minutes are party_size * duration_min. Which server has the highest median revenue per occupied seat-minute? If there is a tie, use alphabetical order.",
+          "ground_truth": "Dia",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_14_q02",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_14/data",
+          "problem_statement": "Insurance Policies, Claims, and Payments. An insurance analyst wants to study settlement timing, payout ratios, claim clustering, and paid loss by product and month.",
+          "question": "Among claims where total payments exceed the policy's deductible, compute each claim's settlement lag in days from loss_date to the date of the LAST payment on that claim. Which cause of loss has the shortest per-cause median settlement lag? Break ties alphabetically.",
+          "ground_truth": "Collision",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_19_q01",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_19/data",
+          "problem_statement": "Soccer Matches, Events, Players, and Attendance. A sports analyst wants to derive standings, halftime dynamics, goal concentration, and venue scoring patterns from event data.",
+          "question": "Using only goals scored in the first half, recompute match outcomes and league standings with standard 3-1-0 points. Which team_id finishes top? Break ties by goal difference , then by total goals scored, then alphabetically by team_id.",
+          "ground_truth": "TA",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        },
+        {
+          "task_id": "task_20_q05",
+          "data_source_type": "table",
+          "data_source_path": "tasks/task_20/data",
+          "problem_statement": "Farm Fields, Plantings, Weather, Harvests, and Pests. An agronomy team wants to compare crop productivity, timing, irrigation exposure, and pest pressure across fields.",
+          "question": "What share of fields were both harvested late and below the median yield for their crop, rounded to 1 decimal place?",
+          "ground_truth": "25.0%",
+          "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+        }
+      ]
+    },
+    "artifacts": {
+      "run_dir": "jobs/gemini_failures_20260309_235138",
+      "notebook_path": "jobs/gemini_failures_20260309_235138/notebook.ipynb",
+      "transcript_path": "jobs/gemini_failures_20260309_235138/transcript.txt",
+      "result_path": "jobs/gemini_failures_20260309_235138/result.json",
+      "log_path": "jobs/gemini_failures_20260309_235138/runtime.log",
+      "exception_path": "jobs/gemini_failures_20260309_235138/exception.txt",
+      "task_artifacts_dir": "jobs/gemini_failures_20260309_235138",
+      "trajectory": "per-task in tasks/<stage>/trajectory.json"
+    }
+  },
+  "agent_result": {
+    "n_input_tokens": 704064,
+    "n_output_tokens": 23922,
+    "n_total_tokens": 727986,
+    "cost_usd": 1.346127,
+    "metadata": {
+      "n_stages": 12,
+      "n_steps": 152,
+      "api_request_times_msec": [
+        15445.285,
+        8701.339,
+        4112.938,
+        2861.298,
+        4013.233,
+        2220.312,
+        9026.985,
+        2777.59,
+        6263.91,
+        2353.158,
+        2223.884,
+        5093.381,
+        2660.724,
+        4695.822,
+        2046.238,
+        11112.423,
+        3294.942,
+        3697.525,
+        4594.547,
+        2766.095,
+        4082.136,
+        2146.05,
+        6621.203,
+        1967.038,
+        10572.08,
+        2354.646,
+        3669.651,
+        2251.739,
+        5310.648,
+        3581.099,
+        5442.351,
+        2207.492,
+        4395.949,
+        3577.093,
+        16165.886,
+        3926.722,
+        3378.207,
+        3779.324,
+        2867.078,
+        6065.818,
+        2337.074,
+        5414.763,
+        2251.177,
+        4161.011,
+        2168.203,
+        5409.103,
+        2347.807,
+        2149.428,
+        12773.978,
+        9930.289,
+        5229.004,
+        2049.675,
+        4625.847,
+        2047.168,
+        8180.565,
+        2302.309,
+        4022.457,
+        2356.332,
+        3215.636,
+        3115.688,
+        2656.46,
+        2666.381,
+        2864.747,
+        2952.878,
+        2350.921,
+        2248.557,
+        2238.215,
+        3668.25,
+        3481.019,
+        4507.159,
+        2655.605,
+        4927.753,
+        4652.932,
+        9771.713,
+        2120.239,
+        5136.272,
+        2147.34,
+        7656.408,
+        2367.821,
+        3544.182,
+        2065.478,
+        4680.287,
+        2464.253,
+        3628.848,
+        2480.588,
+        5088.479,
+        2816.066,
+        10120.785,
+        3709.475,
+        4624.911,
+        1951.172,
+        14897.507,
+        2262.092,
+        6002.874,
+        2363.067,
+        11515.453,
+        2288.19,
+        2341.968,
+        4288.819,
+        3075.014,
+        5550.33,
+        2757.39,
+        9630.778,
+        2454.627,
+        6144.179,
+        2448.292,
+        3417.411,
+        3894.696,
+        2277.414,
+        14995.519,
+        2975.594,
+        4781.723,
+        2047.181,
+        2053.294,
+        2224.397,
+        6765.144,
+        2833.183,
+        10527.28,
+        2351.638,
+        2436.475,
+        2348.964,
+        3681.709,
+        2755.58,
+        3298.983,
+        3140.809,
+        5927.364,
+        2662.224,
+        4595.099,
+        2559.157,
+        4640.049,
+        2381.266,
+        7888.236,
+        2257.153,
+        5891.439,
+        2147.219,
+        2142.119,
+        3981.029,
+        2757.4,
+        4402.507,
+        2492.361,
+        11939.406,
+        15150.543,
+        8874.531,
+        4182.253,
+        3285.572,
+        3961.257,
+        3081.34,
+        4776.829,
+        2071.364,
+        5491.159,
+        2452.785,
+        2130.157
+      ]
+    }
+  },
+  "tasks": {
+    "n_tasks": 12,
+    "n_completed_tasks": 11,
+    "n_failed_tasks": 1,
+    "data_source_types": {
+      "csv": 0,
+      "images": 0,
+      "table": 12,
+      "text": 0
+    },
+    "results": [
+      {
+        "task_id": "task_01_q02",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_01/data",
+        "problem_statement": "Retail Orders, Products, and Returns. A retailer wants to understand net sales after partial returns and how returns interact with products, channels, and customer behavior.",
+        "question": "Return chargebacks reduce revenue on the day the return is processed. Compute daily net revenue and report the date with the largest day-over-day increase.",
+        "ground_truth": "2024-01-15",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_01/q02.json",
+        "stage_name": "task_task_01_q02",
+        "final_response": "2024-01-05",
+        "steps_used": 11,
+        "usage": {
+          "prompt_tokens": 32411,
+          "completion_tokens": 1814,
+          "total_tokens": 34225,
+          "cost_usd": 0.08659
+        },
+        "task_notebook": "tasks/task_task_01_q02/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      },
+      {
+        "task_id": "task_03_q03",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_03/data",
+        "problem_statement": "Hospital Admissions, Labs, and Medications. A hospital quality team wants to analyze readmissions, abnormal labs, medication exposure, and inpatient resource use.",
+        "question": "Among admissions with at least one sodium result below 135, what percentage had medication code M03 starting on or before the date of their first below-135 sodium result? Treat med start_day as days after admit_date, and round to 1 decimal place.",
+        "ground_truth": "35.7%",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_03/q03.json",
+        "stage_name": "task_task_03_q03",
+        "final_response": "42.9",
+        "steps_used": 7,
+        "usage": {
+          "prompt_tokens": 15315,
+          "completion_tokens": 1271,
+          "total_tokens": 16586,
+          "cost_usd": 0.045882000000000006
+        },
+        "task_notebook": "tasks/task_task_03_q03/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      },
+      {
+        "task_id": "task_05_q05",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_05/data",
+        "problem_statement": "Streaming Views, Catalog, and Subscriptions. A streaming platform wants to analyze engagement, completion, binge behavior, and viewing patterns tied to subscriber outcomes.",
+        "question": "Focus only on view events that occurred while the user's subscription was active and within the final 7 days before sub_end. For each date, compute Documentary watch time as a share of total watch time from those events. Restrict to dates with at least 50 total watch minutes in this pre-end window. On which date was the Documentary share highest? If there is a tie, use the earliest date.",
+        "ground_truth": "2024-03-28",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_05/q05.json",
+        "stage_name": "task_task_05_q05",
+        "final_response": "2024-03-02",
+        "steps_used": 17,
+        "usage": {
+          "prompt_tokens": 150573,
+          "completion_tokens": 4438,
+          "total_tokens": 155011,
+          "cost_usd": 0.20153340000000003
+        },
+        "task_notebook": "tasks/task_task_05_q05/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      },
+      {
+        "task_id": "task_06_q03",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_06/data",
+        "problem_statement": "SaaS Accounts, Plans, Invoices, and Tickets. A B2B SaaS finance and support team wants to analyze cash collection, upgrades, ticket load, and account efficiency.",
+        "question": "How many accounts upgraded their plan tier at least once and also never paid an invoice late?",
+        "ground_truth": "2",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_06/q03.json",
+        "stage_name": "task_task_06_q03",
+        "final_response": "12",
+        "steps_used": 13,
+        "usage": {
+          "prompt_tokens": 42037,
+          "completion_tokens": 1801,
+          "total_tokens": 43838,
+          "cost_usd": 0.105686
+        },
+        "task_notebook": "tasks/task_task_06_q03/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      },
+      {
+        "task_id": "task_06_q04",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_06/data",
+        "problem_statement": "SaaS Accounts, Plans, Invoices, and Tickets. A B2B SaaS finance and support team wants to analyze cash collection, upgrades, ticket load, and account efficiency.",
+        "question": "What is the difference between the mean net invoice amount for upgraded accounts and the mean net invoice amount for never-upgraded accounts, rounded to 2 decimals?",
+        "ground_truth": "-280.50",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_06/q04.json",
+        "stage_name": "task_task_06_q04",
+        "final_response": "101.67",
+        "steps_used": 19,
+        "usage": {
+          "prompt_tokens": 74787,
+          "completion_tokens": 1813,
+          "total_tokens": 76600,
+          "cost_usd": 0.17132999999999995
+        },
+        "task_notebook": "tasks/task_task_06_q04/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      },
+      {
+        "task_id": "task_09_q04",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_09/data",
+        "problem_statement": "Marketing Campaigns, Sessions, Spend, and Orders. A growth team wants to analyze campaign efficiency, bounce behavior, and multi-channel paths before purchase.",
+        "question": "Among users who eventually bought, how many had used more than one channel in the lead-up to their first purchase?",
+        "ground_truth": "10",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_09/q04.json",
+        "stage_name": "task_task_09_q04",
+        "final_response": "FAILED: AgentMaxStepsExceeded: Agent did not finish within 20 steps.",
+        "steps_used": 20,
+        "usage": {
+          "prompt_tokens": 81719,
+          "completion_tokens": 3215,
+          "total_tokens": 84934,
+          "cost_usd": 0.20201799999999998
+        },
+        "task_notebook": "tasks/task_task_09_q04/notebook.ipynb",
+        "status": "failed",
+        "failure_type": "AgentMaxStepsExceeded",
+        "failure_message": "Agent did not finish within 20 steps."
+      },
+      {
+        "task_id": "task_10_q02",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_10/data",
+        "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
+        "question": "For shipments originating from South-region depots, what is the median time from pickup to first hub receipt, measured in hours?",
+        "ground_truth": "12.5",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_10/q02.json",
+        "stage_name": "task_task_10_q02",
+        "final_response": "10.0",
+        "steps_used": 11,
+        "usage": {
+          "prompt_tokens": 33126,
+          "completion_tokens": 1268,
+          "total_tokens": 34394,
+          "cost_usd": 0.081468
+        },
+        "task_notebook": "tasks/task_task_10_q02/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      },
+      {
+        "task_id": "task_10_q04",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_10/data",
+        "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
+        "question": "For each origin depot, find shipments heavier than that depot's median shipment weight. Among those above-depot-median-weight shipments across all depots, what percentage exceeded the promised delivery window? Round to 1 decimal place",
+        "ground_truth": "50.0%",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_10/q04.json",
+        "stage_name": "task_task_10_q04",
+        "final_response": "36.7",
+        "steps_used": 11,
+        "usage": {
+          "prompt_tokens": 58128,
+          "completion_tokens": 1854,
+          "total_tokens": 59982,
+          "cost_usd": 0.0950826
+        },
+        "task_notebook": "tasks/task_task_10_q04/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      },
+      {
+        "task_id": "task_13_q02",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_13/data",
+        "problem_statement": "Restaurant Reservations, Tables, and Checks. A restaurant manager wants to analyze no-shows, seating delays, table fit, and revenue by service patterns.",
+        "question": "Among walk-ins that were seated on Friday through Sunday at 19:00 or later, compute revenue per occupied seat-minute, where revenue is food_total + drink_total and occupied seat-minutes are party_size * duration_min. Which server has the highest median revenue per occupied seat-minute? If there is a tie, use alphabetical order.",
+        "ground_truth": "Dia",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_13/q02.json",
+        "stage_name": "task_task_13_q02",
+        "final_response": " If you need to execute code, do it immediately.",
+        "steps_used": 18,
+        "usage": {
+          "prompt_tokens": 156420,
+          "completion_tokens": 2655,
+          "total_tokens": 159075,
+          "cost_usd": 0.191925
+        },
+        "task_notebook": "tasks/task_task_13_q02/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      },
+      {
+        "task_id": "task_14_q02",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_14/data",
+        "problem_statement": "Insurance Policies, Claims, and Payments. An insurance analyst wants to study settlement timing, payout ratios, claim clustering, and paid loss by product and month.",
+        "question": "Among claims where total payments exceed the policy's deductible, compute each claim's settlement lag in days from loss_date to the date of the LAST payment on that claim. Which cause of loss has the shortest per-cause median settlement lag? Break ties alphabetically.",
+        "ground_truth": "Collision",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_14/q02.json",
+        "stage_name": "task_task_14_q02",
+        "final_response": "Theft",
+        "steps_used": 9,
+        "usage": {
+          "prompt_tokens": 19862,
+          "completion_tokens": 1435,
+          "total_tokens": 21297,
+          "cost_usd": 0.056944
+        },
+        "task_notebook": "tasks/task_task_14_q02/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      },
+      {
+        "task_id": "task_19_q01",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_19/data",
+        "problem_statement": "Soccer Matches, Events, Players, and Attendance. A sports analyst wants to derive standings, halftime dynamics, goal concentration, and venue scoring patterns from event data.",
+        "question": "Using only goals scored in the first half, recompute match outcomes and league standings with standard 3-1-0 points. Which team_id finishes top? Break ties by goal difference , then by total goals scored, then alphabetically by team_id.",
+        "ground_truth": "TA",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_19/q01.json",
+        "stage_name": "task_task_19_q01",
+        "final_response": "TC",
+        "steps_used": 7,
+        "usage": {
+          "prompt_tokens": 14061,
+          "completion_tokens": 1319,
+          "total_tokens": 15380,
+          "cost_usd": 0.04395
+        },
+        "task_notebook": "tasks/task_task_19_q01/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      },
+      {
+        "task_id": "task_20_q05",
+        "data_source_type": "table",
+        "data_source_path": "tasks/task_20/data",
+        "problem_statement": "Farm Fields, Plantings, Weather, Harvests, and Pests. An agronomy team wants to compare crop productivity, timing, irrigation exposure, and pest pressure across fields.",
+        "question": "What share of fields were both harvested late and below the median yield for their crop, rounded to 1 decimal place?",
+        "ground_truth": "25.0%",
+        "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code.",
+        "task_file": "/home/devang/Projects/PilotCrew/Data-Science-Bench/tasks/task_20/q05.json",
+        "stage_name": "task_task_20_q05",
+        "final_response": "0.2",
+        "steps_used": 9,
+        "usage": {
+          "prompt_tokens": 25625,
+          "completion_tokens": 1039,
+          "total_tokens": 26664,
+          "cost_usd": 0.063718
+        },
+        "task_notebook": "tasks/task_task_20_q05/notebook.ipynb",
+        "status": "completed",
+        "failure_type": null,
+        "failure_message": null
+      }
+    ]
+  },
+  "stages": [
+    {
+      "name": "task_task_01_q02",
+      "steps_used": 11,
+      "final_response": "2024-01-05",
+      "usage": {
+        "prompt_tokens": 32411,
+        "completion_tokens": 1814,
+        "total_tokens": 34225,
+        "cost_usd": 0.08659
+      }
+    },
+    {
+      "name": "task_task_03_q03",
+      "steps_used": 7,
+      "final_response": "42.9",
+      "usage": {
+        "prompt_tokens": 15315,
+        "completion_tokens": 1271,
+        "total_tokens": 16586,
+        "cost_usd": 0.045882000000000006
+      }
+    },
+    {
+      "name": "task_task_05_q05",
+      "steps_used": 17,
+      "final_response": "2024-03-02",
+      "usage": {
+        "prompt_tokens": 150573,
+        "completion_tokens": 4438,
+        "total_tokens": 155011,
+        "cost_usd": 0.20153340000000003
+      }
+    },
+    {
+      "name": "task_task_06_q03",
+      "steps_used": 13,
+      "final_response": "12",
+      "usage": {
+        "prompt_tokens": 42037,
+        "completion_tokens": 1801,
+        "total_tokens": 43838,
+        "cost_usd": 0.105686
+      }
+    },
+    {
+      "name": "task_task_06_q04",
+      "steps_used": 19,
+      "final_response": "101.67",
+      "usage": {
+        "prompt_tokens": 74787,
+        "completion_tokens": 1813,
+        "total_tokens": 76600,
+        "cost_usd": 0.17132999999999995
+      }
+    },
+    {
+      "name": "task_task_09_q04",
+      "steps_used": 20,
+      "final_response": "FAILED: AgentMaxStepsExceeded: Agent did not finish within 20 steps.",
+      "usage": {
+        "prompt_tokens": 81719,
+        "completion_tokens": 3215,
+        "total_tokens": 84934,
+        "cost_usd": 0.20201799999999998
+      }
+    },
+    {
+      "name": "task_task_10_q02",
+      "steps_used": 11,
+      "final_response": "10.0",
+      "usage": {
+        "prompt_tokens": 33126,
+        "completion_tokens": 1268,
+        "total_tokens": 34394,
+        "cost_usd": 0.081468
+      }
+    },
+    {
+      "name": "task_task_10_q04",
+      "steps_used": 11,
+      "final_response": "36.7",
+      "usage": {
+        "prompt_tokens": 58128,
+        "completion_tokens": 1854,
+        "total_tokens": 59982,
+        "cost_usd": 0.0950826
+      }
+    },
+    {
+      "name": "task_task_13_q02",
+      "steps_used": 18,
+      "final_response": " If you need to execute code, do it immediately.",
+      "usage": {
+        "prompt_tokens": 156420,
+        "completion_tokens": 2655,
+        "total_tokens": 159075,
+        "cost_usd": 0.191925
+      }
+    },
+    {
+      "name": "task_task_14_q02",
+      "steps_used": 9,
+      "final_response": "Theft",
+      "usage": {
+        "prompt_tokens": 19862,
+        "completion_tokens": 1435,
+        "total_tokens": 21297,
+        "cost_usd": 0.056944
+      }
+    },
+    {
+      "name": "task_task_19_q01",
+      "steps_used": 7,
+      "final_response": "TC",
+      "usage": {
+        "prompt_tokens": 14061,
+        "completion_tokens": 1319,
+        "total_tokens": 15380,
+        "cost_usd": 0.04395
+      }
+    },
+    {
+      "name": "task_task_20_q05",
+      "steps_used": 9,
+      "final_response": "0.2",
+      "usage": {
+        "prompt_tokens": 25625,
+        "completion_tokens": 1039,
+        "total_tokens": 26664,
+        "cost_usd": 0.063718
+      }
+    }
+  ],
+  "exception_info": null,
+  "started_at": "2026-03-10T06:51:38.060340Z",
+  "finished_at": "2026-03-10T07:03:43.181755Z",
+  "artifacts": {
+    "transcript": "transcript.txt",
+    "trajectory": "per-task in tasks/<stage>/trajectory.json",
+    "runtime_log": "runtime.log"
+  }
+}

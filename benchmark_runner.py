@@ -208,11 +208,16 @@ def _build_failed_task_record(
         task_artifacts_dir=config.task_artifacts_dir,
         stage_name=stage_name,
     )
+    partial_result = exc.partial_result
     failure_result = AgentRunResult(
         final_response=f"FAILED: {type(exc).__name__}: {exc}",
-        steps_used=config.max_steps if isinstance(exc, AgentMaxStepsExceeded) else 0,
-        usage=AgentUsageSummary(),
-        trace_steps=tuple(),
+        steps_used=(
+            partial_result.steps_used
+            if partial_result is not None
+            else (config.max_steps if isinstance(exc, AgentMaxStepsExceeded) else 0)
+        ),
+        usage=partial_result.usage if partial_result is not None else AgentUsageSummary(),
+        trace_steps=partial_result.trace_steps if partial_result is not None else tuple(),
     )
     trajectory_path = persist_task_trajectory(
         task_artifacts_dir=config.task_artifacts_dir,

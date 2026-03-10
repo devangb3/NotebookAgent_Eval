@@ -1,0 +1,9 @@
+{
+  "task_id": "task_10_q02",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_10/data",
+  "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
+  "question": "For shipments originating from South-region depots, what is the median time from pickup to first hub receipt, measured in hours?",
+  "ground_truth": "12.5",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}

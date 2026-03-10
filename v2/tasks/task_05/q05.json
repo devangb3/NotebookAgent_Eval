@@ -1,0 +1,9 @@
+{
+  "task_id": "task_05_q05",
+  "data_source_type": "table",
+  "data_source_path": "tasks/task_05/data",
+  "problem_statement": "Streaming Views, Catalog, and Subscriptions. A streaming platform wants to analyze engagement, completion, binge behavior, and viewing patterns tied to subscriber outcomes.",
+  "question": "Focus only on view events that occurred while the user's subscription was active and within the final 7 days before sub_end. For each date, compute Documentary watch time as a share of total watch time from those events. Restrict to dates with at least 50 total watch minutes in this pre-end window. On which date was the Documentary share highest? If there is a tie, use the earliest date.",
+  "ground_truth": "2024-03-28",
+  "agent_instructions": "The data source is a directory of CSV files. Inspect only the files needed for the question and compute the answer directly in notebook code."
+}
