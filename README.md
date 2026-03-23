@@ -1,82 +1,98 @@
-# DSBench Notebook Agent
+# DSBench Harbor Harness
 
-Notebook benchmark runner for data-analysis tasks. Each task is defined in its own JSON file, passed on the command line, and executed in a fresh notebook/kernel. The existing top-level artifact layout under `jobs/` is preserved.
+Terminal-style Harbor harness for DSBench data-science tasks. The benchmark content stays in your existing task JSON files, but execution now happens through Harbor jobs, Harbor task environments, and Harbor-supported agents.
 
 ## Configuration
 
-Sync the project with `uv`, activate the virtual environment, then copy `.env.example` values into your environment.
+Sync the project with `uv` and activate the virtual environment.
 
 ```bash
 uv sync --extra dev
 source .venv/bin/activate
-cp .env.example .env
 ```
 
-Runtime configuration:
+Any model or provider credentials are now determined by the Harbor agent you choose. For example:
 
-- `OPENROUTER_API_KEY`: required
-- `OPENROUTER_MODEL`: required
-
-Task data is always resolved under `data/`.
+- `claude-code` typically needs Anthropic credentials
+- `codex` typically needs OpenAI credentials
+- `terminus-2` depends on the model backend you point it at
+- `oracle` needs no model credentials and is useful for smoke tests
 
 Each task JSON must declare:
 
 - `task_id`
-- `data_source_type`: `table`, `csv`, `images`, or `text`
-- `data_source_path`: resolved under `data/`
+- `data_source_path`: resolved under the repo root
 - `problem_statement`
 - `question`
 - `ground_truth`
 - `agent_instructions`: optional
 
-A sample task file is included at `tasks/home_credit/ht_001.json`.
+The same directory as the JSON must contain a `Dockerfile` (one per task family, e.g. `tasks/task_05/Dockerfile` for all `tasks/task_05/q*.json`). The Harbor builder copies it into each generated `environment/Dockerfile`.
+
+At runtime, the harness converts those task JSONs into temporary Harbor task directories under `temp/harbor_tasks/`. Each generated Harbor task contains:
+
+- `instruction.md`
+- `task.toml`
+- `environment/Dockerfile`
+- `tests/test.sh`
+- `tests/verify_answer.py`
+- `solution/solve.sh` for Harbor’s `oracle` agent
 
 ## Run
 
 Pass task paths as positional arguments. Each path can be a directory (runs all `.json` files under it) or a task JSON file.
 
-**Run all tasks in a directory:**
+Run all tasks with a Harbor agent:
+
 ```bash
 source .venv/bin/activate
-python main.py tasks/
+python main.py tasks/ --agent terminus-2 --model openai/gpt-5
 ```
 
-**Run a single task file:**
+Run a single task with Harbor’s Oracle agent for a local smoke test:
+
 ```bash
 source .venv/bin/activate
-python main.py tasks/home_credit/ht_001.json
+python main.py tasks/task_01/q01.json --agent oracle --job-name smoke_oracle
 ```
 
-**Run specific files:**
-```bash
-source .venv/bin/activate
-python main.py tasks/a.json tasks/b.json tasks/c.json
-```
-
-**Options:**
-- `--max-workers N`: Number of tasks to run in parallel (default: 4)
-- `--max-steps N`: Maximum agent steps per task (default: 20)
+Run with an installed Harbor agent such as Claude Code:
 
 ```bash
-# Custom parallelism and steps
-python main.py tasks/ --max-workers 8 --max-steps 30
-
-# Sequential (single worker)
-python main.py tasks/ --max-workers 1
+python main.py tasks/ --agent claude-code --model anthropic/claude-opus-4-1
 ```
 
-Each run creates a Harbor-style artifact folder under `jobs/` using the pattern `agent_{model_name}_{timestamp}`. The top-level artifact structure is preserved:
+Useful options:
 
-- `notebook.ipynb`: final notebook state from the last executed task
-- `transcript.txt`: full model/tool transcript across all tasks
-- `config.json`: run configuration and resolved task definitions
-- `result.json`: run metadata, token usage, timings, task answers, and ground truths
-- `runtime.log`: execution logs
-- `exception.txt`: exception details if the run failed with an uncaught error, otherwise empty
+- `--agent-import-path module.path:ClassName`: use a custom Harbor agent
+- `--n-concurrent N`: Harbor trial concurrency
+- `--agent-timeout-sec S`: per-task agent timeout
+- `--verifier-timeout-sec S`: per-task verifier timeout
+- `--allow-internet/--no-allow-internet`: task-environment internet policy
+- `--jobs-dir DIR`: Harbor jobs output directory
+- `--generated-tasks-dir DIR`: scratch directory for generated Harbor tasks
 
-Per-task artifacts (notebook and trajectory) are stored under `tasks/<task_stage>/` inside the same run directory:
-- `tasks/<task_stage>/notebook.ipynb`: notebook state for that task
-- `tasks/<task_stage>/trajectory.json`: structured step-by-step trace for that task
+Each run creates a Harbor job under `jobs/` with Harbor-native outputs, for example:
+
+```text
+jobs/<job-name>/
+├── config.json
+├── job.log
+├── result.json
+└── <trial-name>/
+    ├── agent/
+    │   └── trajectory.json
+    ├── verifier/
+    │   ├── reward.txt
+    │   └── score.json
+    ├── artifacts/
+    │   └── final_answer.txt
+    ├── config.json
+    ├── result.json
+    └── trial.log
+```
+
+This is Harbor’s native job/trial layout, not the previous notebook-oriented artifact schema.
 
 ## Test
 

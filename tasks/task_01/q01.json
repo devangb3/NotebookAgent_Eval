@@ -1,6 +1,5 @@
 {
   "task_id": "task_01_q01",
-  "data_source_type": "table",
   "data_source_path": "tasks/task_01/data",
   "problem_statement": "Retail Orders, Products, and Returns. A retailer wants to understand net sales after partial returns and how returns interact with products, channels, and customer behavior.",
   "question": "After charging back partial returns at the price each unit was sold for, how much revenue remains from West-region customers, rounded to 2 decimals?",
