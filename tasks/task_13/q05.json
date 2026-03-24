@@ -1,6 +1,5 @@
 {
   "task_id": "task_13_q05",
-  "data_source_type": "table",
   "data_source_path": "tasks/task_13/data",
   "problem_statement": "Restaurant Reservations, Tables, and Checks. A restaurant manager wants to analyze no-shows, seating delays, table fit, and revenue by service patterns.",
   "question": "The restaurant manager wants to compare servers by how much revenue each seat-minute of table time generates. Among walk-in reservations at 18:00 or later, restrict to servers with at least 3 qualifying orders. Which server has the highest median? Break ties alphabetically.",

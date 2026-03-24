@@ -5,13 +5,10 @@ import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-VALID_DATA_SOURCE_TYPES = frozenset({"table", "csv", "images", "text"})
-
 
 @dataclass(frozen=True)
 class BenchmarkTask:
     task_id: str
-    data_source_type: str
     data_source_path: str
     problem_statement: str
     question: str
@@ -29,6 +26,9 @@ class BenchmarkTask:
 class TaskFile:
     path: Path
     task: BenchmarkTask
+
+    def resolved_dockerfile_path(self) -> Path:
+        return self.path.parent / "Dockerfile"
 
 
 def resolve_task_paths(paths: list[str]) -> list[Path]:
@@ -68,7 +68,13 @@ def load_task_file(task_path: Path, *, data_root: Path) -> TaskFile:
 
     task = _parse_task(payload=payload)
     _validate_task_path(task, data_root=data_root)
-    return TaskFile(path=resolved_task_path, task=task)
+    task_file = TaskFile(path=resolved_task_path, task=task)
+    dockerfile_path = task_file.resolved_dockerfile_path()
+    if not dockerfile_path.is_file():
+        raise FileNotFoundError(
+            f"Task {task.task_id!r} requires a Dockerfile next to the task JSON: {dockerfile_path}"
+        )
+    return task_file
 
 
 def load_task_files(task_paths: list[str] | list[Path], *, data_root: Path) -> tuple[TaskFile, ...]:
@@ -90,27 +96,11 @@ def task_stage_name(task: BenchmarkTask) -> str:
     return f"task_{safe_task_id or 'task'}"
 
 
-def count_data_source_types(tasks: list[BenchmarkTask] | tuple[BenchmarkTask, ...]) -> dict[str, int]:
-    counts = {data_source_type: 0 for data_source_type in sorted(VALID_DATA_SOURCE_TYPES)}
-    for task in tasks:
-        if task.data_source_type in counts:
-            counts[task.data_source_type] += 1
-    return counts
-
-
 def _parse_task(*, payload: dict[str, object]) -> BenchmarkTask:
     task_id = _require_string(payload, "task_id")
-    data_source_type = _require_string(payload, "data_source_type")
-    if data_source_type not in VALID_DATA_SOURCE_TYPES:
-        valid_values = ", ".join(sorted(VALID_DATA_SOURCE_TYPES))
-        raise ValueError(
-            f"Task {task_id!r} has unsupported data_source_type {data_source_type!r}. "
-            f"Expected one of: {valid_values}."
-        )
 
     return BenchmarkTask(
         task_id=task_id,
-        data_source_type=data_source_type,
         data_source_path=_require_string(payload, "data_source_path"),
         problem_statement=_require_string(payload, "problem_statement"),
         question=_require_string(payload, "question"),

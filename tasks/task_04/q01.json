@@ -1,6 +1,5 @@
 {
   "task_id": "task_04_q01",
-  "data_source_type": "table",
   "data_source_path": "tasks/task_04/data",
   "problem_statement": "Manufacturing Batches, QC, and Maintenance. A factory operations analyst needs to connect maintenance timing to quality, runtime, and energy efficiency.",
   "question": "For batches produced strictly within 7 days after any maintenance event (repair or inspection) on the same machine, compute energy consumed per good unit produced. Calculate the per-line median of this metric, rounded to 2 decimal places. Which production line has the worst (highest) median post-maintenance energy per good unit?",
