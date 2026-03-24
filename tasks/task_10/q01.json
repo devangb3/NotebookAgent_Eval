@@ -1,5 +1,6 @@
 {
   "task_id": "task_10_q01",
+  "data_source_type": "table",
   "data_source_path": "tasks/task_10/data",
   "problem_statement": "Shipments, Depot Scans, and Delivery Performance. A logistics team wants to analyze carrier performance, transfer latency, and late-delivery risk from scan data.",
   "question": "For shipments where the number of in_transit scans exactly equals promised_days, compute each shipment's delivery time in hours from the first picked_up scan to the first delivered scan. Which carrier has the lowest median delivery time among these shipments? Break ties alphabetically.",

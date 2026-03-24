@@ -1,5 +1,6 @@
 {
   "task_id": "task_04_q02",
+  "data_source_type": "table",
   "data_source_path": "tasks/task_04/data",
   "problem_statement": "Manufacturing Batches, QC, and Maintenance. A factory operations analyst needs to connect maintenance timing to quality, runtime, and energy efficiency.",
   "question": "For each machine, compute its rework-to-defect ratio. Among machines whose average runtime_hours per batch is strictly above the overall average runtime_hours across all batches, which machine_id has the highest rework-to-defect ratio? Break ties by smallest machine_id.",

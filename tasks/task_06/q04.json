@@ -1,5 +1,6 @@
 {
   "task_id": "task_06_q04",
+  "data_source_type": "table",
   "data_source_path": "tasks/task_06/data",
   "problem_statement": "SaaS Accounts, Plans, Invoices, and Tickets. A B2B SaaS finance and support team wants to analyze cash collection, upgrades, ticket load, and account efficiency.",
   "question": "What is the difference between the mean net invoice amount for upgraded accounts and the mean net invoice amount for never-upgraded accounts, rounded to 2 decimals?",

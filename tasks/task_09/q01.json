@@ -1,5 +1,6 @@
 {
   "task_id": "task_09_q01",
+  "data_source_type": "table",
   "data_source_path": "tasks/task_09/data",
   "problem_statement": "Marketing Campaigns, Sessions, Spend, and Orders. A growth team wants to analyze campaign efficiency, bounce behavior, and multi-channel paths before purchase.",
   "question": "For each user who placed at least one order, compute their revenue per session. Using first-touch attribution, which channel has the highest average per-user revenue per session? Break ties alphabetically.",

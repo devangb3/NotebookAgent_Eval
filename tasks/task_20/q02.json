@@ -1,5 +1,6 @@
 {
   "task_id": "task_20_q02",
+  "data_source_type": "table",
   "data_source_path": "tasks/task_20/data",
   "problem_statement": "Farm Fields, Plantings, Weather, Harvests, and Pests. An agronomy team wants to compare crop productivity, timing, irrigation exposure, and pest pressure across fields.",
   "question": "For each crop, compute the average yield per hectare across its fields. Identify fields whose yield per hectare falls below their crop's average. For each underperforming field, compute cumulative rainfall by summing daily rain_mm from weather.csv between the field's plant_date and the last date in the weather data (inclusive). Then compute rainfall efficiency as yield_tons / cumulative_rain_mm. Among underperforming fields, which has the highest rainfall efficiency? Report the field_id. Break ties alphabetically.",

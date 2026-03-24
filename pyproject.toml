@@ -5,12 +5,19 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "dsbench-notebook-agent"
 version = "0.1.0"
-description = "Harbor-based DSBench harness for terminal-style data science agent evaluation."
+description = "Notebook-persistent ReACT agent for DSBench-style ML workflows."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
-  "harbor>=0.1.45",
+  "ipykernel>=6.29.5",
+  "jupyter_client>=8.6.3",
+  "nbclient>=0.10.2",
+  "nbformat>=5.10.4",
+  "numpy>=2.2.3",
+  "openai>=1.68.2",
+  "pandas>=2.2.3",
   "python-dotenv>=1.0.1",
+  "scikit-learn>=1.6.1",
 ]
 
 [project.optional-dependencies]
@@ -20,11 +27,16 @@ dev = [
 
 [tool.setuptools]
 py-modules = [
-  "harbor_runner",
-  "harbor_task_builder",
-  "instruction_builder",
+  "agent",
+  "app_config",
+  "benchmark_runner",
+  "environment",
   "main",
+  "prompt_builder",
+  "run_artifacts",
+  "synthetic_benchmark",
   "task_loader",
+  "tools",
 ]
 
 [tool.pytest.ini_options]
